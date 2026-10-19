@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-bg: 13 13 13;
+    --color-bg-elevated: 17 17 17;
+    --color-bg-muted: 15 15 15;
+    --color-surface-cream: 245 240 232;
+    --color-surface-cream-muted: 250 246 238;
+    --color-ink: 245 240 232;
+    --color-ink-muted: 245 240 232 / 0.72;
+    --color-ink-subtle: 245 240 232 / 0.45;
+    --color-ink-on-cream: 61 44 30;
+    --color-gold: 201 169 110;
+    --color-gold-bright: 224 191 130;
+    --color-gold-muted: 201 169 110 / 0.35;
+    --color-border: 201 169 110 / 0.22;
+    --color-focus: 224 191 130;
+
+    --font-serif: var(--font-display), Georgia, Cambria, "Times New Roman", serif;
+    --font-sans: var(--font-body), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+    --text-xs: 0.6875rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.5rem;
+    --text-3xl: 2rem;
+    --text-4xl: 2.75rem;
+    --text-5xl: 3.5rem;
+    --text-hero: clamp(3rem, 8vw, 5.5rem);
+
+    --space-section: clamp(4rem, 10vw, 7rem);
+    --radius-sm: 0.25rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 1rem;
+    --radius-full: 9999px;
+
+    --shadow-soft: 0 24px 48px -12px rgb(0 0 0 / 0.45);
+    --shadow-glow: 0 0 0 1px rgb(var(--color-gold) / 0.15);
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  body {
+    @apply bg-bg text-ink font-serif antialiased;
+    font-family: var(--font-serif);
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--color-focus));
+    outline-offset: 3px;
+  }
+}
+
+::selection {
+  background-color: rgb(var(--color-gold));
+  color: rgb(var(--color-bg));
+}
