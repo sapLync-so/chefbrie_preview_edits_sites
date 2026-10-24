@@ -49,6 +49,52 @@ const emptyIntake = (): MealPrepIntakeData => ({
   signatureDate: "",
 });
 
+type MealPrepWeek = (typeof mealPrepMenu.weeks)[number];
+
+function MealPrepWeekGrid({
+  weeks,
+  selectedIds,
+  onToggleWeek,
+  getMeal,
+}: {
+  weeks: MealPrepWeek[];
+  selectedIds: string[];
+  onToggleWeek: (id: string) => void;
+  getMeal: (week: MealPrepWeek) => { name: string; price: number };
+}) {
+  return (
+    <div className="grid w-full min-w-0 grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+      {weeks.map((week, index) => {
+        const selected = selectedIds.includes(week.id);
+        const meal = getMeal(week);
+        return (
+          <label
+            key={week.id}
+            className={cn(
+              "box-border flex h-full min-w-0 cursor-pointer flex-col rounded-md border p-3 transition-colors",
+              selected ? "border-gold bg-gold/10" : "border-border hover:border-gold/45"
+            )}
+          >
+            <input
+              type="checkbox"
+              className="sr-only"
+              checked={selected}
+              onChange={() => onToggleWeek(week.id)}
+            />
+            <span className="font-sans text-[10px] uppercase leading-tight tracking-[0.12em] text-gold">
+              {mealPrepRotationLabel(index)}
+            </span>
+            <span className="mt-2 flex-1 font-sans text-xs leading-snug text-ink/85 md:text-sm">{meal.name}</span>
+            <span className="mt-auto pt-3 font-sans text-xs tabular-nums text-ink/55">
+              {formatMealPrepPrice(meal.price)}
+            </span>
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
 function DemoBookContent() {
   const searchParams = useSearchParams();
   const initialService = searchParams.get("service") === "meal-prep" ? "meal-prep" : "meal-prep";
@@ -227,12 +273,7 @@ function DemoBookContent() {
   };
 
   return (
-    <main
-      className={cn(
-        "mx-auto px-5 pt-28",
-        isMealPrep && (step === 2 || step === 3) ? "max-w-5xl" : "max-w-2xl"
-      )}
-    >
+    <main className={cn("mx-auto min-w-0 px-5 pt-28", isMealPrep ? "w-full max-w-5xl" : "max-w-2xl")}>
       <Badge variant="placeholder" className="mb-4">
         Demo — preview booking flow
       </Badge>
@@ -245,7 +286,7 @@ function DemoBookContent() {
           : "This multi-step flow shows how booking could feel for catering and supper club inquiries."}
       </p>
 
-      <ol className="mt-10 flex gap-2 font-sans text-[10px] uppercase tracking-[0.2em]" aria-label="Progress">
+      <ol className="mt-10 flex w-full min-w-0 gap-2 font-sans text-[10px] uppercase tracking-[0.2em]" aria-label="Progress">
         {stepLabels.map((label, i) => {
           const n = i + 1;
           return (
@@ -263,7 +304,7 @@ function DemoBookContent() {
       </ol>
 
       {!submitted ? (
-        <div className="relative mt-10 space-y-8 rounded-lg border border-border bg-bg-elevated p-6 shadow-glow">
+        <div className="relative mt-10 w-full min-w-0 space-y-8 rounded-lg border border-border bg-bg-elevated p-6 shadow-glow">
           <HoneypotField value={honeypot} onChange={setHoneypot} />
           {step === 1 && isMealPrep && <MealPrepIntakeForm data={intake} onChange={setIntake} />}
 
@@ -307,7 +348,7 @@ function DemoBookContent() {
           )}
 
           {step === 2 && isMealPrep && (
-            <fieldset className="space-y-8">
+            <fieldset className="min-w-0 space-y-8">
               <legend className="font-sans text-xs uppercase tracking-[0.25em] text-gold">Build your order</legend>
               <p className="font-sans text-sm leading-relaxed text-ink/65">
                 Choose breakfast and/or dinner — each service has a ${MEAL_PREP_MIN_ORDER} minimum. Pick as many weeks as
@@ -315,7 +356,7 @@ function DemoBookContent() {
                 (see intake form).
               </p>
 
-              <section className="w-full space-y-4 rounded-lg border border-border bg-bg p-4 md:p-5">
+              <section className="w-full min-w-0 space-y-4 rounded-lg border border-border bg-bg p-4 md:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h3 className="font-sans text-sm font-medium uppercase tracking-[0.15em] text-ink">Breakfast</h3>
                   <Button
@@ -335,36 +376,12 @@ function DemoBookContent() {
                 </div>
                 {breakfastServiceEnabled ? (
                   <>
-                    <div className="-mx-1 flex gap-3 overflow-x-auto pb-1 pt-1">
-                      {weeks.map((week, index) => {
-                        const selected = selectedBreakfastWeekIds.includes(week.id);
-                        return (
-                          <label
-                            key={week.id}
-                            className={cn(
-                              "flex min-w-[11rem] max-w-[14rem] flex-1 cursor-pointer flex-col rounded-md border p-3 transition-colors",
-                              selected ? "border-gold bg-gold/10" : "border-border hover:border-gold/35",
-                              !breakfastServiceEnabled && "pointer-events-none opacity-50"
-                            )}
-                          >
-                            <input
-                              type="checkbox"
-                              className="sr-only"
-                              checked={selected}
-                              onChange={() => toggleBreakfastWeek(week.id)}
-                              disabled={!breakfastServiceEnabled}
-                            />
-                            <span className="font-sans text-xs uppercase tracking-[0.12em] text-gold">
-                              {mealPrepRotationLabel(index)}
-                            </span>
-                            <span className="mt-2 font-sans text-sm leading-snug text-ink/85">{week.breakfast.name}</span>
-                            <span className="mt-2 font-sans text-xs tabular-nums text-ink/55">
-                              {formatMealPrepPrice(week.breakfast.price)}
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
+                    <MealPrepWeekGrid
+                      weeks={weeks}
+                      selectedIds={selectedBreakfastWeekIds}
+                      onToggleWeek={toggleBreakfastWeek}
+                      getMeal={(week) => week.breakfast}
+                    />
                     <p className="font-sans text-xs tabular-nums text-ink/55">
                       Breakfast subtotal (estimated): {formatMealPrepPrice(breakfastSubtotal)}
                     </p>
@@ -379,7 +396,7 @@ function DemoBookContent() {
                 )}
               </section>
 
-              <section className="w-full space-y-4 rounded-lg border border-border bg-bg p-4 md:p-5">
+              <section className="w-full min-w-0 space-y-4 rounded-lg border border-border bg-bg p-4 md:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h3 className="font-sans text-sm font-medium uppercase tracking-[0.15em] text-ink">Dinner</h3>
                   <Button
@@ -399,36 +416,12 @@ function DemoBookContent() {
                 </div>
                 {dinnerServiceEnabled ? (
                   <>
-                    <div className="-mx-1 flex gap-3 overflow-x-auto pb-1 pt-1">
-                      {weeks.map((week, index) => {
-                        const selected = selectedDinnerWeekIds.includes(week.id);
-                        return (
-                          <label
-                            key={week.id}
-                            className={cn(
-                              "flex min-w-[11rem] max-w-[14rem] flex-1 cursor-pointer flex-col rounded-md border p-3 transition-colors",
-                              selected ? "border-gold bg-gold/10" : "border-border hover:border-gold/35",
-                              !dinnerServiceEnabled && "pointer-events-none opacity-50"
-                            )}
-                          >
-                            <input
-                              type="checkbox"
-                              className="sr-only"
-                              checked={selected}
-                              onChange={() => toggleDinnerWeek(week.id)}
-                              disabled={!dinnerServiceEnabled}
-                            />
-                            <span className="font-sans text-xs uppercase tracking-[0.12em] text-gold">
-                              {mealPrepRotationLabel(index)}
-                            </span>
-                            <span className="mt-2 font-sans text-sm leading-snug text-ink/85">{week.dinner.name}</span>
-                            <span className="mt-2 font-sans text-xs tabular-nums text-ink/55">
-                              {formatMealPrepPrice(week.dinner.price)}
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
+                    <MealPrepWeekGrid
+                      weeks={weeks}
+                      selectedIds={selectedDinnerWeekIds}
+                      onToggleWeek={toggleDinnerWeek}
+                      getMeal={(week) => week.dinner}
+                    />
                     <p className="font-sans text-xs tabular-nums text-ink/55">
                       Dinner subtotal (estimated): {formatMealPrepPrice(dinnerSubtotal)}
                     </p>
