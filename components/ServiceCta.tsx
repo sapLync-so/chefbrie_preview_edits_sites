@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { InquiryDialog, type InquiryField } from "@/components/InquiryDialog";
+import type { ContactSubmitPayload } from "@/lib/inquiry";
 import type { ServiceValue } from "@/lib/booking";
 
 const quoteFields: InquiryField[] = [
@@ -43,7 +44,6 @@ export function ServiceCta({
           triggerLabel={primaryLabel}
           title="Request a quote"
           description="Describe your micro-catering needs and Chef Brie will follow up with pricing and availability."
-          subject="Micro-Catering quote request"
           formType="micro-catering-quote"
           fields={quoteFields}
         />
@@ -52,7 +52,6 @@ export function ServiceCta({
           triggerLabel={primaryLabel}
           title="Artist application"
           description="Apply to showcase your work at an upcoming Brie's Supper Club evening."
-          subject="Supper Club artist application"
           formType="supper-club-artist"
           fields={[
             { id: "artistName", label: "Artist name", required: true },

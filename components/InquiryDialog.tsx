@@ -4,7 +4,15 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { buildMailtoUrl, submitInquiry } from "@/lib/inquiry";
+import { HoneypotField } from "@/components/HoneypotField";
+import { TurnstileField } from "@/components/TurnstileField";
+import { useFormStartedAt } from "@/lib/form-client-meta";
+import {
+  buildMailtoFromContact,
+  buildMailtoUrl,
+  submitContact,
+  type ContactSubmitPayload,
+} from "@/lib/inquiry";
 import { cn } from "@/lib/utils";
 
 const fieldClass =
@@ -23,18 +31,45 @@ type InquiryDialogProps = {
   triggerLabel: string;
   title: string;
   description?: string;
-  subject: string;
-  formType: string;
+  formType: ContactSubmitPayload["formType"];
   fields: InquiryField[];
   triggerClassName?: string;
   triggerVariant?: "default" | "outline";
 };
 
+function buildPayload(
+  formType: ContactSubmitPayload["formType"],
+  values: Record<string, string>,
+  honeypot: string
+): ContactSubmitPayload | null {
+  if (formType === "micro-catering-quote") {
+    return {
+      formType,
+      company_website: honeypot,
+      name: values.name?.trim() ?? "",
+      email: values.email?.trim() ?? "",
+      phone: values.phone?.trim() || undefined,
+      details: values.details?.trim() ?? "",
+    };
+  }
+  if (formType === "supper-club-artist") {
+    return {
+      formType,
+      company_website: honeypot,
+      artistName: values.artistName?.trim() ?? "",
+      medium: values.medium?.trim() ?? "",
+      location: values.location?.trim() ?? "",
+      contact: values.contact?.trim() ?? "",
+      whyJoin: values.whyJoin?.trim() ?? "",
+    };
+  }
+  return null;
+}
+
 export function InquiryDialog({
   triggerLabel,
   title,
   description,
-  subject,
   formType,
   fields,
   triggerClassName,
@@ -42,30 +77,38 @@ export function InquiryDialog({
 }: InquiryDialogProps) {
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
+  const [honeypot, setHoneypot] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const formStartedAt = useFormStartedAt();
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "mailto">("idle");
   const [error, setError] = useState<string | null>(null);
 
   const reset = () => {
     setValues({});
+    setHoneypot("");
     setStatus("idle");
     setError(null);
   };
-
-  const buildBody = () =>
-    fields.map((f) => `${f.label}: ${values[f.id]?.trim() || "—"}`).join("\n");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus("sending");
     setError(null);
-    const body = buildBody();
-    const result = await submitInquiry({ subject, body, formType });
+    const payload = buildPayload(formType, values, honeypot);
+    if (!payload) {
+      setError("Unsupported form type.");
+      setStatus("idle");
+      return;
+    }
+
+    const result = await submitContact(payload, { formStartedAt, turnstileToken: turnstileToken || undefined });
     if (result.ok) {
       setStatus("sent");
       return;
     }
     if (result.preview) {
-      window.location.href = buildMailtoUrl({ subject, body });
+      const mail = buildMailtoFromContact(payload);
+      window.location.href = buildMailtoUrl(mail);
       setStatus("mailto");
       return;
     }
@@ -89,7 +132,7 @@ export function InquiryDialog({
         </Button>
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out" />
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm" />
         <Dialog.Content
           className={cn(
             "fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[min(100vw-2rem,32rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto",
@@ -119,12 +162,11 @@ export function InquiryDialog({
           {status === "sent" || status === "mailto" ? (
             <div className="space-y-4 font-sans text-sm text-ink/75">
               {status === "sent" ? (
-                <p>Your message was sent to Chef Brie. She will follow up soon.</p>
+                <p className="text-gold">Thank you — your message was sent to Chef Brie.</p>
               ) : (
                 <p>
-                  This preview opened your email app with your message ready to send. On the live site at{" "}
-                  <strong className="font-normal text-gold">chefbrie.llc</strong>, the same form posts to the contact
-                  API when enabled.
+                  The server is not configured for this preview, so your email app opened with your message ready to
+                  send.
                 </p>
               )}
               <Button type="button" onClick={() => setOpen(false)}>
@@ -132,7 +174,8 @@ export function InquiryDialog({
               </Button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="relative space-y-4">
+              <HoneypotField value={honeypot} onChange={setHoneypot} />
               {fields.map((field) => (
                 <div key={field.id}>
                   <label htmlFor={field.id} className="mb-2 block font-sans text-xs uppercase tracking-[0.2em] text-ink/50">
@@ -153,6 +196,7 @@ export function InquiryDialog({
                       id={field.id}
                       type={field.type ?? "text"}
                       required={field.required}
+                      autoComplete={field.id === "email" ? "email" : undefined}
                       placeholder={field.placeholder}
                       value={values[field.id] ?? ""}
                       onChange={(e) => setValues((v) => ({ ...v, [field.id]: e.target.value }))}
@@ -161,11 +205,8 @@ export function InquiryDialog({
                   )}
                 </div>
               ))}
+              <TurnstileField onToken={setTurnstileToken} />
               {error ? <p className="font-sans text-sm text-red-300">{error}</p> : null}
-              <p className="font-sans text-xs leading-relaxed text-ink/45">
-                In this public preview, submissions use the contact API when available or your email app via mailto. No
-                third-party keys are stored in the repo.
-              </p>
               <div className="flex flex-wrap gap-3 pt-2">
                 <Button type="submit" disabled={!allRequiredFilled || status === "sending"}>
                   {status === "sending" ? "Sending…" : "Send inquiry"}

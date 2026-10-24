@@ -13,14 +13,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { mealPrepMenu, mealPrepRotationLabel } from "@/data/menus";
 import { formatMealPrepPrice } from "@/lib/menu-utils";
-import {
-  formatIntakeForSubmission,
-  isMealPrepIntakeComplete,
-  MEAL_PREP_INTAKE_COPY,
-  type MealPrepIntakeData,
-} from "@/lib/meal-prep-intake";
-import { buildMailtoUrl, submitInquiry } from "@/lib/inquiry";
+import { isMealPrepIntakeComplete, MEAL_PREP_INTAKE_COPY, type MealPrepIntakeData } from "@/lib/meal-prep-intake";
+import { buildMailtoFromContact, buildMailtoUrl, submitContact } from "@/lib/inquiry";
+import { HoneypotField } from "@/components/HoneypotField";
+import { TurnstileField } from "@/components/TurnstileField";
+import { useFormStartedAt } from "@/lib/form-client-meta";
 import { cn } from "@/lib/utils";
+
+const fieldClass =
+  "w-full rounded-md border border-border bg-bg px-4 py-3 font-sans text-sm text-ink focus-visible:ring-2 focus-visible:ring-gold-bright";
 
 const services = [
   { id: "meal-prep", label: "Weekly Meal Prep" },
@@ -49,6 +50,14 @@ function DemoBookContent() {
   const [selectedWeekIds, setSelectedWeekIds] = useState<string[]>([]);
   const [intake, setIntake] = useState<MealPrepIntakeData>(emptyIntake);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [honeypot, setHoneypot] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [bookingName, setBookingName] = useState("");
+  const [bookingEmailPhone, setBookingEmailPhone] = useState("");
+  const [bookingMessage, setBookingMessage] = useState("");
+  const formStartedAt = useFormStartedAt();
 
   const weeks = mealPrepMenu.weeks;
   const isMealPrep = service === "meal-prep";
@@ -83,33 +92,61 @@ function DemoBookContent() {
       : step === 2
         ? isMealPrep
           ? selectedWeekIds.length > 0
-          : true
+          : bookingName.trim().length > 0 && bookingEmailPhone.trim().length > 0
         : true;
 
   const handleSubmit = async () => {
-    if (!isMealPrep) {
+    setSubmitError(null);
+    setIsSubmitting(true);
+
+    const meta = { formStartedAt, turnstileToken: turnstileToken || undefined };
+
+    const payload = isMealPrep
+      ? {
+          formType: "meal-prep-booking" as const,
+          company_website: honeypot,
+          clientName: intake.clientName,
+          emailPhone: intake.emailPhone,
+          dietaryRestrictions: intake.dietaryRestrictions,
+          acknowledgmentName: intake.acknowledgmentName,
+          signatureDate: intake.signatureDate,
+          signatureDataUrl: intake.signatureDataUrl,
+          selectedWeeks: weeks
+            .filter((w) => selectedWeekIds.includes(w.id))
+            .map((w) => {
+              const index = weeks.indexOf(w);
+              return {
+                rotationLabel: mealPrepRotationLabel(index),
+                breakfast: w.breakfast.name,
+                dinner: w.dinner.name,
+                breakfastPrice: w.breakfast.price,
+                dinnerPrice: w.dinner.price,
+              };
+            }),
+          subtotal: total,
+          paymentNote: MEAL_PREP_INTAKE_COPY.payment,
+        }
+      : {
+          formType: "general-booking" as const,
+          company_website: honeypot,
+          name: bookingName.trim(),
+          emailPhone: bookingEmailPhone.trim(),
+          service: services.find((s) => s.id === service)?.label ?? service,
+          preferredDate: date,
+          message: bookingMessage.trim() || undefined,
+        };
+
+    const result = await submitContact(payload, meta);
+    setIsSubmitting(false);
+    if (result.ok) {
       setSubmitted(true);
       return;
     }
-    const weekLines = lineItems
-      .map((item) => `${item.label}: ${item.detail} (${formatMealPrepPrice(item.price)})`)
-      .join("\n");
-    const body = [
-      formatIntakeForSubmission(intake),
-      "",
-      "Selected weeks:",
-      weekLines || "—",
-      "",
-      `Demo subtotal: ${formatMealPrepPrice(total)}`,
-      "",
-      MEAL_PREP_INTAKE_COPY.payment,
-    ].join("\n");
-    const subject = `Meal prep booking — ${intake.clientName}`;
-    const result = await submitInquiry({ subject, body, formType: "meal-prep-booking" });
-    if (!result.ok && result.preview) {
-      window.location.href = buildMailtoUrl({ subject, body });
+    if (result.preview) {
+      window.location.href = buildMailtoUrl(buildMailtoFromContact(payload));
+      return;
     }
-    setSubmitted(true);
+    setSubmitError(result.error ?? "Could not send your request. Please try again or email Chef Brie directly.");
   };
 
   return (
@@ -144,7 +181,8 @@ function DemoBookContent() {
       </ol>
 
       {!submitted ? (
-        <div className="mt-10 space-y-8 rounded-lg border border-border bg-bg-elevated p-6 shadow-glow">
+        <div className="relative mt-10 space-y-8 rounded-lg border border-border bg-bg-elevated p-6 shadow-glow">
+          <HoneypotField value={honeypot} onChange={setHoneypot} />
           {step === 1 && isMealPrep && <MealPrepIntakeForm data={intake} onChange={setIntake} />}
 
           {step === 1 && !isMealPrep && (
@@ -222,13 +260,45 @@ function DemoBookContent() {
           )}
 
           {step === 2 && !isMealPrep && (
-            <div className="space-y-4 font-sans text-sm text-ink/70">
-              <p>
-                For <span className="text-gold">{services.find((s) => s.id === service)?.label}</span>, a production
-                flow would capture guest count, venue, and dietary notes. Use the service pages to send a full inquiry.
-              </p>
-              <Badge variant="placeholder">Placeholder — catering & supper club fields</Badge>
-            </div>
+            <fieldset className="space-y-4">
+              <legend className="font-sans text-xs uppercase tracking-[0.25em] text-gold">Your details</legend>
+              <div>
+                <label htmlFor="booking-name" className="mb-2 block font-sans text-xs uppercase tracking-[0.2em] text-ink/50">
+                  Name
+                </label>
+                <input
+                  id="booking-name"
+                  required
+                  value={bookingName}
+                  onChange={(e) => setBookingName(e.target.value)}
+                  className={fieldClass}
+                />
+              </div>
+              <div>
+                <label htmlFor="booking-contact" className="mb-2 block font-sans text-xs uppercase tracking-[0.2em] text-ink/50">
+                  Email / phone
+                </label>
+                <input
+                  id="booking-contact"
+                  required
+                  value={bookingEmailPhone}
+                  onChange={(e) => setBookingEmailPhone(e.target.value)}
+                  className={fieldClass}
+                />
+              </div>
+              <div>
+                <label htmlFor="booking-message" className="mb-2 block font-sans text-xs uppercase tracking-[0.2em] text-ink/50">
+                  Notes (guest count, venue, dietary needs)
+                </label>
+                <textarea
+                  id="booking-message"
+                  rows={4}
+                  value={bookingMessage}
+                  onChange={(e) => setBookingMessage(e.target.value)}
+                  className={fieldClass}
+                />
+              </div>
+            </fieldset>
           )}
 
           {step === 3 && (
@@ -283,14 +353,8 @@ function DemoBookContent() {
                   </dl>
                 </>
               )}
-              <p className="font-sans text-xs text-ink/45">
-                Live site: POST to <code className="text-ink/60">/api/chef-brie-contact</code> when enabled, or mailto to
-                Chef Brie.{" "}
-                <Link href="/#contact" className="text-gold underline-offset-2 hover:underline">
-                  Contact section
-                </Link>{" "}
-                uses the same handler.
-              </p>
+              <TurnstileField onToken={setTurnstileToken} />
+              {submitError ? <p className="font-sans text-sm text-red-300">{submitError}</p> : null}
             </div>
           )}
 
@@ -305,18 +369,18 @@ function DemoBookContent() {
                 Continue
               </Button>
             ) : (
-              <Button type="button" onClick={handleSubmit}>
-                Submit request
+              <Button type="button" onClick={handleSubmit} disabled={isSubmitting}>
+                {isSubmitting ? "Sending…" : "Submit request"}
               </Button>
             )}
           </div>
         </div>
       ) : (
         <div className="mt-10 rounded-lg border border-gold/40 bg-gold/10 p-8 text-center">
-          <p className="font-sans text-sm uppercase tracking-[0.2em] text-gold">Request recorded</p>
+          <p className="font-sans text-sm uppercase tracking-[0.2em] text-gold">Request sent</p>
           <p className="mt-4 font-sans text-sm text-ink/75">
             {isMealPrep
-              ? "If the contact API is disabled (this preview), your email app may have opened with the booking details. Chef Brie will confirm pickup and payment."
+              ? "Chef Brie received your intake and week selections. She will confirm pickup and payment details."
               : "This demo did not transmit data. Use the contact section or service inquiry forms to reach Chef Brie."}
           </p>
           <Button asChild className="mt-6">

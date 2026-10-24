@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { HeroVideo } from "@/components/HeroVideo";
+import { HeroMedia } from "@/components/HeroMedia";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { DemoBanner } from "@/components/DemoBanner";
 import { HomeGallery } from "@/components/HomeGallery";
@@ -66,7 +66,7 @@ export default function ChefBrieHome() {
       {/* Hero */}
       <section className="relative flex min-h-[100svh] items-end pt-16">
         <div className="absolute inset-0 overflow-hidden">
-          <HeroVideo className="h-full w-full object-cover" />
+          <HeroMedia />
           <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/55 to-bg/30" aria-hidden />
         </div>
         <div className="relative z-10 mx-auto w-full max-w-6xl px-5 pb-20 md:pb-28">

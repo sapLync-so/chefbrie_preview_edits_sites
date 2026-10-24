@@ -47,7 +47,6 @@ export default function SupperClubPage() {
               triggerClassName="mt-8"
               title="Artist application"
               description="Apply to showcase your work at an upcoming Brie's Supper Club evening."
-              subject="Supper Club artist application"
               formType="supper-club-artist"
               fields={[
                 { id: "artistName", label: "Artist name", required: true },
