@@ -18,7 +18,16 @@ import { buildMailtoFromContact, buildMailtoUrl, submitContact } from "@/lib/inq
 import { HoneypotField } from "@/components/HoneypotField";
 import { TurnstileField } from "@/components/TurnstileField";
 import { useFormStartedAt } from "@/lib/form-client-meta";
+import {
+  mealPrepEstimatedTotal,
+  mealPrepSalesTax,
+  meetsServiceMinimum,
+  minimumOrderMessage,
+  serviceSubtotal,
+} from "@/lib/meal-prep-order";
 import { cn } from "@/lib/utils";
+
+const MEAL_PREP_MIN_ORDER = 75;
 
 const fieldClass =
   "w-full rounded-md border border-border bg-bg px-4 py-3 font-sans text-sm text-ink focus-visible:ring-2 focus-visible:ring-gold-bright";
@@ -47,7 +56,10 @@ function DemoBookContent() {
   const [step, setStep] = useState(1);
   const [service, setService] = useState<ServiceId>(initialService);
   const [date, setDate] = useState("");
-  const [selectedWeekIds, setSelectedWeekIds] = useState<string[]>([]);
+  const [breakfastServiceEnabled, setBreakfastServiceEnabled] = useState(false);
+  const [dinnerServiceEnabled, setDinnerServiceEnabled] = useState(false);
+  const [selectedBreakfastWeekIds, setSelectedBreakfastWeekIds] = useState<string[]>([]);
+  const [selectedDinnerWeekIds, setSelectedDinnerWeekIds] = useState<string[]>([]);
   const [intake, setIntake] = useState<MealPrepIntakeData>(emptyIntake);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -62,23 +74,82 @@ function DemoBookContent() {
   const weeks = mealPrepMenu.weeks;
   const isMealPrep = service === "meal-prep";
 
+  const breakfastSubtotal = useMemo(
+    () => serviceSubtotal(selectedBreakfastWeekIds, weeks, "breakfast"),
+    [selectedBreakfastWeekIds, weeks]
+  );
+  const dinnerSubtotal = useMemo(
+    () => serviceSubtotal(selectedDinnerWeekIds, weeks, "dinner"),
+    [selectedDinnerWeekIds, weeks]
+  );
+
   const lineItems = useMemo(() => {
-    return weeks
-      .filter((w) => selectedWeekIds.includes(w.id))
-      .flatMap((w) => {
-        const label = mealPrepRotationLabel(weeks.indexOf(w));
-        return [
-          { key: `${w.id}-breakfast`, label: `${label} — Breakfast`, detail: w.breakfast.name, price: w.breakfast.price },
-          { key: `${w.id}-dinner`, label: `${label} — Dinner`, detail: w.dinner.name, price: w.dinner.price },
-        ];
-      });
-  }, [selectedWeekIds, weeks]);
+    const items: { key: string; label: string; detail: string; price: number }[] = [];
+    weeks.forEach((w, index) => {
+      const rotation = mealPrepRotationLabel(index);
+      if (breakfastServiceEnabled && selectedBreakfastWeekIds.includes(w.id)) {
+        items.push({
+          key: `${w.id}-breakfast`,
+          label: `${rotation} — Breakfast`,
+          detail: w.breakfast.name,
+          price: w.breakfast.price,
+        });
+      }
+      if (dinnerServiceEnabled && selectedDinnerWeekIds.includes(w.id)) {
+        items.push({
+          key: `${w.id}-dinner`,
+          label: `${rotation} — Dinner`,
+          detail: w.dinner.name,
+          price: w.dinner.price,
+        });
+      }
+    });
+    return items;
+  }, [breakfastServiceEnabled, dinnerServiceEnabled, selectedBreakfastWeekIds, selectedDinnerWeekIds, weeks]);
 
-  const total = lineItems.reduce((sum, item) => sum + item.price, 0);
+  const subtotal = lineItems.reduce((sum, item) => sum + item.price, 0);
+  const salesTax = mealPrepSalesTax(subtotal);
+  const estimatedTotal = mealPrepEstimatedTotal(subtotal);
 
-  const toggleWeek = (id: string) => {
-    setSelectedWeekIds((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]));
+  const toggleBreakfastWeek = (id: string) => {
+    setSelectedBreakfastWeekIds((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]));
   };
+
+  const toggleDinnerWeek = (id: string) => {
+    setSelectedDinnerWeekIds((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]));
+  };
+
+  const toggleBreakfastService = () => {
+    setBreakfastServiceEnabled((on) => {
+      if (on) setSelectedBreakfastWeekIds([]);
+      return !on;
+    });
+  };
+
+  const toggleDinnerService = () => {
+    setDinnerServiceEnabled((on) => {
+      if (on) setSelectedDinnerWeekIds([]);
+      return !on;
+    });
+  };
+
+  const mealPrepStep2Valid = useMemo(() => {
+    const hasService =
+      (breakfastServiceEnabled && selectedBreakfastWeekIds.length > 0) ||
+      (dinnerServiceEnabled && selectedDinnerWeekIds.length > 0);
+    if (!hasService) return false;
+    return (
+      meetsServiceMinimum(breakfastServiceEnabled, breakfastSubtotal) &&
+      meetsServiceMinimum(dinnerServiceEnabled, dinnerSubtotal)
+    );
+  }, [
+    breakfastServiceEnabled,
+    dinnerServiceEnabled,
+    selectedBreakfastWeekIds.length,
+    selectedDinnerWeekIds.length,
+    breakfastSubtotal,
+    dinnerSubtotal,
+  ]);
 
   const stepLabels = isMealPrep
     ? (["Intake", "Your weeks", "Summary"] as const)
@@ -91,7 +162,7 @@ function DemoBookContent() {
         : Boolean(date)
       : step === 2
         ? isMealPrep
-          ? selectedWeekIds.length > 0
+          ? mealPrepStep2Valid
           : bookingName.trim().length > 0 && bookingEmailPhone.trim().length > 0
         : true;
 
@@ -112,18 +183,24 @@ function DemoBookContent() {
           signatureDate: intake.signatureDate,
           signatureDataUrl: intake.signatureDataUrl,
           selectedWeeks: weeks
-            .filter((w) => selectedWeekIds.includes(w.id))
-            .map((w) => {
-              const index = weeks.indexOf(w);
+            .map((w, index) => {
+              const includeBreakfast = breakfastServiceEnabled && selectedBreakfastWeekIds.includes(w.id);
+              const includeDinner = dinnerServiceEnabled && selectedDinnerWeekIds.includes(w.id);
+              if (!includeBreakfast && !includeDinner) return null;
               return {
                 rotationLabel: mealPrepRotationLabel(index),
-                breakfast: w.breakfast.name,
-                dinner: w.dinner.name,
-                breakfastPrice: w.breakfast.price,
-                dinnerPrice: w.dinner.price,
+                ...(includeBreakfast
+                  ? { breakfast: w.breakfast.name, breakfastPrice: w.breakfast.price }
+                  : {}),
+                ...(includeDinner ? { dinner: w.dinner.name, dinnerPrice: w.dinner.price } : {}),
               };
-            }),
-          subtotal: total,
+            })
+            .filter((row): row is NonNullable<typeof row> => row != null),
+          subtotal,
+          salesTax,
+          estimatedTotal,
+          breakfastServiceSelected: breakfastServiceEnabled,
+          dinnerServiceSelected: dinnerServiceEnabled,
           paymentNote: MEAL_PREP_INTAKE_COPY.payment,
         }
       : {
@@ -150,7 +227,12 @@ function DemoBookContent() {
   };
 
   return (
-    <main className="mx-auto max-w-2xl px-5 pt-28">
+    <main
+      className={cn(
+        "mx-auto px-5 pt-28",
+        isMealPrep && (step === 2 || step === 3) ? "max-w-5xl" : "max-w-2xl"
+      )}
+    >
       <Badge variant="placeholder" className="mb-4">
         Demo — preview booking flow
       </Badge>
@@ -225,37 +307,145 @@ function DemoBookContent() {
           )}
 
           {step === 2 && isMealPrep && (
-            <fieldset className="space-y-4">
-              <legend className="font-sans text-xs uppercase tracking-[0.25em] text-gold">Select your weeks</legend>
+            <fieldset className="space-y-8">
+              <legend className="font-sans text-xs uppercase tracking-[0.25em] text-gold">Build your order</legend>
               <p className="font-sans text-sm leading-relaxed text-ink/65">
-                Order as many weeks as you want — many clients book a month at a time. Each week includes breakfast and
-                dinner from the rotating Sunday menu. Cancellations must be made by Friday morning; otherwise payments
-                are non-refundable (see intake form).
+                Choose breakfast and/or dinner — each service has a ${MEAL_PREP_MIN_ORDER} minimum. Pick as many weeks as
+                you like per service. Cancellations must be made by Friday morning; otherwise payments are non-refundable
+                (see intake form).
               </p>
-              <ul className="space-y-3">
-                {weeks.map((week, index) => (
-                  <li key={week.id}>
-                    <label
-                      className={cn(
-                        "flex cursor-pointer gap-3 rounded-md border p-4 transition-colors",
-                        selectedWeekIds.includes(week.id) ? "border-gold bg-gold/10" : "border-border hover:border-gold/35"
-                      )}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedWeekIds.includes(week.id)}
-                        onChange={() => toggleWeek(week.id)}
-                        className="mt-1 accent-gold"
-                      />
-                      <div className="font-sans text-sm">
-                        <p className="font-medium text-ink">{mealPrepRotationLabel(index)}</p>
-                        <p className="mt-1 text-ink/65">Breakfast: {week.breakfast.name}</p>
-                        <p className="text-ink/65">Dinner: {week.dinner.name}</p>
-                      </div>
-                    </label>
-                  </li>
-                ))}
-              </ul>
+
+              <section className="w-full space-y-4 rounded-lg border border-border bg-bg p-4 md:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="font-sans text-sm font-medium uppercase tracking-[0.15em] text-ink">Breakfast</h3>
+                  <Button
+                    type="button"
+                    variant={breakfastServiceEnabled ? "default" : "outline"}
+                    className={cn(
+                      "font-sans text-xs uppercase tracking-[0.12em]",
+                      breakfastServiceEnabled
+                        ? "bg-gold text-bg hover:bg-gold/90"
+                        : "border-border bg-bg-elevated text-ink hover:border-gold/50"
+                    )}
+                    onClick={toggleBreakfastService}
+                    aria-pressed={breakfastServiceEnabled}
+                  >
+                    {breakfastServiceEnabled ? "Deselect Breakfast" : "Select Breakfast"}
+                  </Button>
+                </div>
+                {breakfastServiceEnabled ? (
+                  <>
+                    <div className="-mx-1 flex gap-3 overflow-x-auto pb-1 pt-1">
+                      {weeks.map((week, index) => {
+                        const selected = selectedBreakfastWeekIds.includes(week.id);
+                        return (
+                          <label
+                            key={week.id}
+                            className={cn(
+                              "flex min-w-[11rem] max-w-[14rem] flex-1 cursor-pointer flex-col rounded-md border p-3 transition-colors",
+                              selected ? "border-gold bg-gold/10" : "border-border hover:border-gold/35",
+                              !breakfastServiceEnabled && "pointer-events-none opacity-50"
+                            )}
+                          >
+                            <input
+                              type="checkbox"
+                              className="sr-only"
+                              checked={selected}
+                              onChange={() => toggleBreakfastWeek(week.id)}
+                              disabled={!breakfastServiceEnabled}
+                            />
+                            <span className="font-sans text-xs uppercase tracking-[0.12em] text-gold">
+                              {mealPrepRotationLabel(index)}
+                            </span>
+                            <span className="mt-2 font-sans text-sm leading-snug text-ink/85">{week.breakfast.name}</span>
+                            <span className="mt-2 font-sans text-xs tabular-nums text-ink/55">
+                              {formatMealPrepPrice(week.breakfast.price)}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <p className="font-sans text-xs tabular-nums text-ink/55">
+                      Breakfast subtotal (estimated): {formatMealPrepPrice(breakfastSubtotal)}
+                    </p>
+                    {!meetsServiceMinimum(true, breakfastSubtotal) ? (
+                      <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 font-sans text-sm text-amber-100">
+                        {minimumOrderMessage("Breakfast", breakfastSubtotal)}
+                      </p>
+                    ) : null}
+                  </>
+                ) : (
+                  <p className="font-sans text-sm text-ink/45">Breakfast is not included in this order.</p>
+                )}
+              </section>
+
+              <section className="w-full space-y-4 rounded-lg border border-border bg-bg p-4 md:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="font-sans text-sm font-medium uppercase tracking-[0.15em] text-ink">Dinner</h3>
+                  <Button
+                    type="button"
+                    variant={dinnerServiceEnabled ? "default" : "outline"}
+                    className={cn(
+                      "font-sans text-xs uppercase tracking-[0.12em]",
+                      dinnerServiceEnabled
+                        ? "bg-gold text-bg hover:bg-gold/90"
+                        : "border-border bg-bg-elevated text-ink hover:border-gold/50"
+                    )}
+                    onClick={toggleDinnerService}
+                    aria-pressed={dinnerServiceEnabled}
+                  >
+                    {dinnerServiceEnabled ? "Deselect Dinner" : "Select Dinner"}
+                  </Button>
+                </div>
+                {dinnerServiceEnabled ? (
+                  <>
+                    <div className="-mx-1 flex gap-3 overflow-x-auto pb-1 pt-1">
+                      {weeks.map((week, index) => {
+                        const selected = selectedDinnerWeekIds.includes(week.id);
+                        return (
+                          <label
+                            key={week.id}
+                            className={cn(
+                              "flex min-w-[11rem] max-w-[14rem] flex-1 cursor-pointer flex-col rounded-md border p-3 transition-colors",
+                              selected ? "border-gold bg-gold/10" : "border-border hover:border-gold/35",
+                              !dinnerServiceEnabled && "pointer-events-none opacity-50"
+                            )}
+                          >
+                            <input
+                              type="checkbox"
+                              className="sr-only"
+                              checked={selected}
+                              onChange={() => toggleDinnerWeek(week.id)}
+                              disabled={!dinnerServiceEnabled}
+                            />
+                            <span className="font-sans text-xs uppercase tracking-[0.12em] text-gold">
+                              {mealPrepRotationLabel(index)}
+                            </span>
+                            <span className="mt-2 font-sans text-sm leading-snug text-ink/85">{week.dinner.name}</span>
+                            <span className="mt-2 font-sans text-xs tabular-nums text-ink/55">
+                              {formatMealPrepPrice(week.dinner.price)}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <p className="font-sans text-xs tabular-nums text-ink/55">
+                      Dinner subtotal (estimated): {formatMealPrepPrice(dinnerSubtotal)}
+                    </p>
+                    {!meetsServiceMinimum(true, dinnerSubtotal) ? (
+                      <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 font-sans text-sm text-amber-100">
+                        {minimumOrderMessage("Dinner", dinnerSubtotal)}
+                      </p>
+                    ) : null}
+                  </>
+                ) : (
+                  <p className="font-sans text-sm text-ink/45">Dinner is not included in this order.</p>
+                )}
+              </section>
+
+              {!breakfastServiceEnabled && !dinnerServiceEnabled ? (
+                <p className="font-sans text-sm text-ink/55">Select at least one service to continue.</p>
+              ) : null}
             </fieldset>
           )}
 
@@ -331,9 +521,17 @@ function DemoBookContent() {
                           <span className="shrink-0 tabular-nums">{formatMealPrepPrice(item.price)}</span>
                         </li>
                       ))}
+                      <li className="flex justify-between gap-4 border-b border-border/60 pb-2 pt-1">
+                        <span className="text-ink/70">Estimated subtotal</span>
+                        <span className="shrink-0 tabular-nums">{formatMealPrepPrice(subtotal)}</span>
+                      </li>
+                      <li className="flex justify-between gap-4 border-b border-border/60 pb-2">
+                        <span className="text-ink/70">Estimated NJ sales tax (6.6%)</span>
+                        <span className="shrink-0 tabular-nums">{formatMealPrepPrice(salesTax)}</span>
+                      </li>
                       <li className="flex justify-between gap-4 pt-2 font-semibold">
                         <span>Estimated total</span>
-                        <span>{formatMealPrepPrice(total)}</span>
+                        <span className="shrink-0 tabular-nums">{formatMealPrepPrice(estimatedTotal)}</span>
                       </li>
                     </ul>
                   )}

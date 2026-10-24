@@ -6,13 +6,19 @@ const honeypotField = z
   .default("")
   .refine((v) => v === "", { message: "Spam detected" });
 
-const weekLineSchema = z.object({
-  rotationLabel: z.string().min(1),
-  breakfast: z.string().min(1),
-  dinner: z.string().min(1),
-  breakfastPrice: z.number().nonnegative(),
-  dinnerPrice: z.number().nonnegative(),
-});
+const weekLineSchema = z
+  .object({
+    rotationLabel: z.string().min(1),
+    breakfast: z.string().min(1).optional(),
+    dinner: z.string().min(1).optional(),
+    breakfastPrice: z.number().nonnegative().optional(),
+    dinnerPrice: z.number().nonnegative().optional(),
+  })
+  .refine(
+    (w) =>
+      (w.breakfast != null && w.breakfastPrice != null) || (w.dinner != null && w.dinnerPrice != null),
+    { message: "Each week must include at least one meal" }
+  );
 
 export const mealPrepBookingSchema = z.object({
   formType: z.literal("meal-prep-booking"),
@@ -29,6 +35,10 @@ export const mealPrepBookingSchema = z.object({
     .refine((v) => v.startsWith("data:image/png;base64,"), "Invalid signature image"),
   selectedWeeks: z.array(weekLineSchema).min(1).max(52),
   subtotal: z.number().nonnegative(),
+  salesTax: z.number().nonnegative().optional(),
+  estimatedTotal: z.number().nonnegative().optional(),
+  breakfastServiceSelected: z.boolean().optional(),
+  dinnerServiceSelected: z.boolean().optional(),
   paymentNote: z.string().max(2000).optional(),
 });
 

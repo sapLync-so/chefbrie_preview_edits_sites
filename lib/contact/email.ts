@@ -63,12 +63,21 @@ function plainTextBody(submission: ContactSubmission): string {
       `Signature date: ${submission.signatureDate}`,
       "",
       "Weeks:",
-      ...submission.selectedWeeks.map(
-        (w) =>
-          `- ${w.rotationLabel}: ${w.breakfast} / ${w.dinner} (subtotal items $${w.breakfastPrice + w.dinnerPrice})`
-      ),
+      ...submission.selectedWeeks.map((w) => {
+        const parts: string[] = [];
+        if (w.breakfast != null) parts.push(`Breakfast: ${w.breakfast} ($${w.breakfastPrice?.toFixed(2)})`);
+        if (w.dinner != null) parts.push(`Dinner: ${w.dinner} ($${w.dinnerPrice?.toFixed(2)})`);
+        const lineTotal = (w.breakfastPrice ?? 0) + (w.dinnerPrice ?? 0);
+        return `- ${w.rotationLabel}: ${parts.join("; ")} ($${lineTotal.toFixed(2)})`;
+      }),
       "",
       `Estimated subtotal: $${submission.subtotal.toFixed(2)}`,
+      ...(submission.salesTax != null
+        ? [`Estimated NJ sales tax (6.6%): $${submission.salesTax.toFixed(2)}`]
+        : []),
+      ...(submission.estimatedTotal != null
+        ? [`Estimated total: $${submission.estimatedTotal.toFixed(2)}`]
+        : []),
       ...(submission.paymentNote ? ["", submission.paymentNote] : []),
       "",
       "Signature PNG attached.",
@@ -126,14 +135,25 @@ function htmlBody(submission: ContactSubmission): string {
 
   if (submission.formType === "meal-prep-booking") {
     const weeks = submission.selectedWeeks
-      .map(
-        (w) =>
-          `<li><strong>${esc(w.rotationLabel)}</strong><br/>Breakfast: ${esc(w.breakfast)}<br/>Dinner: ${esc(w.dinner)}</li>`
-      )
+      .map((w) => {
+        const lines: string[] = [];
+        if (w.breakfast != null) lines.push(`Breakfast: ${esc(w.breakfast)}`);
+        if (w.dinner != null) lines.push(`Dinner: ${esc(w.dinner)}`);
+        return `<li><strong>${esc(w.rotationLabel)}</strong><br/>${lines.join("<br/>")}</li>`;
+      })
       .join("");
+    const totals = [
+      `<p><strong>Estimated subtotal:</strong> $${submission.subtotal.toFixed(2)}</p>`,
+      submission.salesTax != null
+        ? `<p><strong>Estimated NJ sales tax (6.6%):</strong> $${submission.salesTax.toFixed(2)}</p>`
+        : "",
+      submission.estimatedTotal != null
+        ? `<p><strong>Estimated total:</strong> $${submission.estimatedTotal.toFixed(2)}</p>`
+        : "",
+    ].join("");
     return wrap(
       subjectFor(submission),
-      `<p><strong>Client:</strong> ${esc(submission.clientName)}<br/><strong>Contact:</strong> ${esc(submission.emailPhone)}</p><p><strong>Dietary:</strong><br/>${esc(submission.dietaryRestrictions)}</p><p><strong>Acknowledgment:</strong> ${esc(submission.acknowledgmentName)} · ${esc(submission.signatureDate)}</p><ul>${weeks}</ul><p><strong>Estimated subtotal:</strong> $${submission.subtotal.toFixed(2)}</p><p>Signature PNG attached.</p>`
+      `<p><strong>Client:</strong> ${esc(submission.clientName)}<br/><strong>Contact:</strong> ${esc(submission.emailPhone)}</p><p><strong>Dietary:</strong><br/>${esc(submission.dietaryRestrictions)}</p><p><strong>Acknowledgment:</strong> ${esc(submission.acknowledgmentName)} · ${esc(submission.signatureDate)}</p><ul>${weeks}</ul>${totals}<p>Signature PNG attached.</p>`
     );
   }
 
