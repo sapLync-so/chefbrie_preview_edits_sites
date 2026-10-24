@@ -18,11 +18,41 @@ function subjectFor(submission: ContactSubmission): string {
   }
 }
 
+function extractReplyTo(value: string | undefined): string | undefined {
+  if (!value?.trim()) return undefined;
+  const trimmed = value.trim();
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return trimmed;
+  const match = trimmed.match(/[^\s,]+@[^\s,]+\.[^\s,]+/);
+  return match?.[0];
+}
+
+function submitterReplyTo(submission: ContactSubmission): string | undefined {
+  switch (submission.formType) {
+    case "contact":
+    case "micro-catering-quote":
+      return submission.email;
+    case "meal-prep-booking":
+      return extractReplyTo(submission.emailPhone);
+    case "general-booking":
+      return extractReplyTo(submission.emailPhone);
+    case "supper-club-artist":
+      return extractReplyTo(submission.contact);
+  }
+}
+
+function plainTextHeader(submission: ContactSubmission): string[] {
+  return [`Form: ${submission.formType}`, ""];
+}
+
+function joinPlainBody(header: string[], lines: string[]): string {
+  return [...header, ...lines].join("\n");
+}
+
 function plainTextBody(submission: ContactSubmission): string {
-  const lines: string[] = [`Form: ${submission.formType}`, ""];
+  const header = plainTextHeader(submission);
 
   if (submission.formType === "meal-prep-booking") {
-    lines.push(
+    return joinPlainBody(header, [
       `Client: ${submission.clientName}`,
       `Email/Phone: ${submission.emailPhone}`,
       "",
@@ -39,57 +69,51 @@ function plainTextBody(submission: ContactSubmission): string {
       ),
       "",
       `Estimated subtotal: $${submission.subtotal.toFixed(2)}`,
-      submission.paymentNote ? `Payment note: ${submission.paymentNote}` : ""
-    );
-    lines.push("", "Signature PNG attached.");
-    return lines.filter(Boolean).join("\n");
+      ...(submission.paymentNote ? ["", submission.paymentNote] : []),
+      "",
+      "Signature PNG attached.",
+    ]);
   }
 
   if (submission.formType === "micro-catering-quote") {
-    return [
+    return joinPlainBody(header, [
       `Name: ${submission.name}`,
       `Email: ${submission.email}`,
-      submission.phone ? `Phone: ${submission.phone}` : "",
+      ...(submission.phone ? [`Phone: ${submission.phone}`] : []),
       "",
       submission.details,
-    ]
-      .filter(Boolean)
-      .join("\n");
+    ]);
   }
 
   if (submission.formType === "contact") {
-    return [
+    return joinPlainBody(header, [
       `Name: ${submission.name}`,
       `Email: ${submission.email}`,
-      submission.phone ? `Phone: ${submission.phone}` : "",
-      submission.service ? `Service: ${submission.service}` : "",
+      ...(submission.phone ? [`Phone: ${submission.phone}`] : []),
+      ...(submission.service ? [`Service: ${submission.service}`] : []),
       "",
       submission.message,
-    ]
-      .filter(Boolean)
-      .join("\n");
+    ]);
   }
 
   if (submission.formType === "general-booking") {
-    return [
+    return joinPlainBody(header, [
       `Name: ${submission.name}`,
       `Contact: ${submission.emailPhone}`,
       `Service: ${submission.service}`,
       `Preferred date: ${submission.preferredDate}`,
-      submission.message ?? "",
-    ]
-      .filter(Boolean)
-      .join("\n");
+      ...(submission.message ? ["", submission.message] : []),
+    ]);
   }
 
-  return [
+  return joinPlainBody(header, [
     `Artist: ${submission.artistName}`,
     `Medium: ${submission.medium}`,
     `Location: ${submission.location}`,
     `Contact: ${submission.contact}`,
     "",
     submission.whyJoin,
-  ].join("\n");
+  ]);
 }
 
 function htmlBody(submission: ContactSubmission): string {
@@ -143,7 +167,7 @@ function htmlBody(submission: ContactSubmission): string {
 export async function sendContactEmail(
   cfg: ContactRuntimeConfig,
   submission: ContactSubmission
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: string; resendEmailId?: string }> {
   if (!cfg.emailEnabled || !cfg.resendApiKey || !cfg.resendFromEmail) {
     return { ok: false, error: "Email not configured" };
   }
@@ -159,9 +183,12 @@ export async function sendContactEmail(
         ]
       : undefined;
 
-  const { error } = await resend.emails.send({
+  const replyTo = submitterReplyTo(submission);
+
+  const { data, error } = await resend.emails.send({
     from: cfg.resendFromEmail,
     to: cfg.notifyEmail,
+    ...(replyTo ? { replyTo } : {}),
     subject: subjectFor(submission),
     text: plainTextBody(submission),
     html: htmlBody(submission),
@@ -172,5 +199,10 @@ export async function sendContactEmail(
     console.error("[contact] Resend failed:", error.message);
     return { ok: false, error: error.message };
   }
-  return { ok: true };
+
+  if (data?.id) {
+    console.info("[contact] Resend sent", { formType: submission.formType, resendEmailId: data.id });
+  }
+
+  return { ok: true, resendEmailId: data?.id };
 }

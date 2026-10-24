@@ -12,6 +12,7 @@ export type ProcessSubmissionResult = {
     supabase?: boolean;
     email?: boolean;
     notion?: boolean;
+    resendEmailId?: string;
   };
 };
 
@@ -53,24 +54,23 @@ export async function processContactSubmission(
   const notionSucceeded = notionResult.ok;
   const supabaseSucceeded = supabaseResult.ok;
 
+  const details = {
+    supabase: supabaseSucceeded,
+    email: emailSucceeded,
+    notion: notionSucceeded,
+    ...(emailResult.resendEmailId ? { resendEmailId: emailResult.resendEmailId } : {}),
+  };
+
   if (emailSucceeded || notionSucceeded || supabaseSucceeded) {
     return {
       ok: true,
-      details: {
-        supabase: supabaseSucceeded,
-        email: emailSucceeded,
-        notion: notionSucceeded,
-      },
+      details,
     };
   }
 
   return {
     ok: false,
     error: emailResult.error ?? notionResult.error ?? supabaseResult.error ?? "Submission failed",
-    details: {
-      supabase: supabaseSucceeded,
-      email: emailSucceeded,
-      notion: notionSucceeded,
-    },
+    details,
   };
 }

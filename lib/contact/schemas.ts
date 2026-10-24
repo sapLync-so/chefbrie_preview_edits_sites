@@ -81,7 +81,7 @@ export const contactSubmissionSchema = z.discriminatedUnion("formType", [
 
 export const contactRequestSchema = contactSubmissionSchema.and(
   z.object({
-    formStartedAt: z.number().optional(),
+    formStartedAt: z.number(),
     turnstileToken: z.string().max(4096).optional(),
   })
 );
