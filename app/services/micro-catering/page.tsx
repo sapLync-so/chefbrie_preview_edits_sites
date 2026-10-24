@@ -32,7 +32,12 @@ export default function MicroCateringPage() {
             charcuterie — then reach out for a custom quote aligned to your headcount and event format.
           </p>
         </div>
-        <ServiceCta service="micro-catering" primaryLabel="Request a Quote" menuHref="/menu#catering" />
+        <ServiceCta
+          service="micro-catering"
+          primaryLabel="Request a Quote"
+          menuHref="/menu#catering"
+          inquiryMode="quote"
+        />
       </article>
     </PageShell>
   );

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 
 /** Preview snapshot: contact submissions are intentionally disabled. */
-export async function POST() {
+export async function POST(request: Request) {
+  await request.json().catch(() => null);
+
   return NextResponse.json(
     {
       error: "Contact form is disabled in this client preview.",
