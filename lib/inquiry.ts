@@ -1,4 +1,4 @@
-const CHEF_BRIE_EMAIL = "chefbrie01@gmail.com";
+const CHEF_BRIE_EMAIL = "chefbrie.01@gmail.com";
 
 export type InquiryPayload = {
   subject: string;

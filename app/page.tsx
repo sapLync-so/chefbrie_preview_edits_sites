@@ -305,7 +305,7 @@ export default function ChefBrieHome() {
         <div className="mx-auto grid max-w-6xl gap-16 md:grid-cols-2">
           <Reveal>
             <a
-              href="mailto:chefbrie01@gmail.com"
+              href="mailto:chefbrie.01@gmail.com"
               className="mb-4 inline-block font-sans text-xs uppercase tracking-[0.35em] text-gold transition-colors hover:text-gold-bright"
             >
               Get in Touch
@@ -322,8 +322,8 @@ export default function ChefBrieHome() {
             <div className="space-y-5 font-sans text-sm">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-ink/40">Email</p>
-                <a href="mailto:chefbrie01@gmail.com" className="text-ink/80 hover:text-gold">
-                  chefbrie01@gmail.com
+                <a href="mailto:chefbrie.01@gmail.com" className="text-ink/80 hover:text-gold">
+                  chefbrie.01@gmail.com
                 </a>
               </div>
               <div>

@@ -35,7 +35,7 @@ export function SiteFooter() {
             Chef Brie
           </Link>
           <p className="text-center font-sans text-xs text-ink/30">
-            New Jersey & Pennsylvania · chefbrie01@gmail.com · 609-213-4778
+            New Jersey & Pennsylvania · chefbrie.01@gmail.com · 609-213-4778
           </p>
           <div className="flex gap-5">
             <a
