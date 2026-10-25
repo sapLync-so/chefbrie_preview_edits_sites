@@ -95,6 +95,41 @@ function MealPrepWeekGrid({
   );
 }
 
+const serviceToggleButtonClass = (enabled: boolean) =>
+  cn(
+    "h-10 w-full font-sans text-xs uppercase tracking-[0.12em] sm:w-auto sm:min-w-[11rem] sm:self-start",
+    enabled ? "bg-gold text-bg hover:bg-gold/90" : "border-border bg-bg-elevated text-ink hover:border-gold/50"
+  );
+
+function MealPrepServiceHeader({
+  title,
+  enabled,
+  onToggle,
+  selectLabel,
+  deselectLabel,
+}: {
+  title: string;
+  enabled: boolean;
+  onToggle: () => void;
+  selectLabel: string;
+  deselectLabel: string;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <h3 className="font-sans text-sm font-medium uppercase tracking-[0.15em] text-ink">{title}</h3>
+      <Button
+        type="button"
+        variant={enabled ? "default" : "outline"}
+        className={serviceToggleButtonClass(enabled)}
+        onClick={onToggle}
+        aria-pressed={enabled}
+      >
+        {enabled ? deselectLabel : selectLabel}
+      </Button>
+    </div>
+  );
+}
+
 function DemoBookContent() {
   const searchParams = useSearchParams();
   const initialService = searchParams.get("service") === "meal-prep" ? "meal-prep" : "meal-prep";
@@ -354,23 +389,13 @@ function DemoBookContent() {
               </p>
 
               <section className="w-full min-w-0 space-y-4 rounded-lg border border-border bg-bg p-4 md:p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h3 className="font-sans text-sm font-medium uppercase tracking-[0.15em] text-ink">Breakfast</h3>
-                  <Button
-                    type="button"
-                    variant={breakfastServiceEnabled ? "default" : "outline"}
-                    className={cn(
-                      "font-sans text-xs uppercase tracking-[0.12em]",
-                      breakfastServiceEnabled
-                        ? "bg-gold text-bg hover:bg-gold/90"
-                        : "border-border bg-bg-elevated text-ink hover:border-gold/50"
-                    )}
-                    onClick={toggleBreakfastService}
-                    aria-pressed={breakfastServiceEnabled}
-                  >
-                    {breakfastServiceEnabled ? "Deselect Breakfast" : "Select Breakfast"}
-                  </Button>
-                </div>
+                <MealPrepServiceHeader
+                  title="Breakfast"
+                  enabled={breakfastServiceEnabled}
+                  onToggle={toggleBreakfastService}
+                  selectLabel="Select Breakfast"
+                  deselectLabel="Deselect Breakfast"
+                />
                 {breakfastServiceEnabled ? (
                   <>
                     <MealPrepWeekGrid
@@ -389,23 +414,13 @@ function DemoBookContent() {
               </section>
 
               <section className="w-full min-w-0 space-y-4 rounded-lg border border-border bg-bg p-4 md:p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h3 className="font-sans text-sm font-medium uppercase tracking-[0.15em] text-ink">Dinner</h3>
-                  <Button
-                    type="button"
-                    variant={dinnerServiceEnabled ? "default" : "outline"}
-                    className={cn(
-                      "font-sans text-xs uppercase tracking-[0.12em]",
-                      dinnerServiceEnabled
-                        ? "bg-gold text-bg hover:bg-gold/90"
-                        : "border-border bg-bg-elevated text-ink hover:border-gold/50"
-                    )}
-                    onClick={toggleDinnerService}
-                    aria-pressed={dinnerServiceEnabled}
-                  >
-                    {dinnerServiceEnabled ? "Deselect Dinner" : "Select Dinner"}
-                  </Button>
-                </div>
+                <MealPrepServiceHeader
+                  title="Dinner"
+                  enabled={dinnerServiceEnabled}
+                  onToggle={toggleDinnerService}
+                  selectLabel="Select Dinner"
+                  deselectLabel="Deselect Dinner"
+                />
                 {dinnerServiceEnabled ? (
                   <>
                     <MealPrepWeekGrid
@@ -558,7 +573,17 @@ function DemoBookContent() {
               </Button>
             )}
             {step < 3 ? (
-              <Button type="button" onClick={() => setStep((s) => s + 1)} disabled={!canContinue}>
+              <Button
+                type="button"
+                onClick={() => setStep((s) => s + 1)}
+                disabled={!canContinue}
+                variant={canContinue ? "default" : "outline"}
+                className={cn(
+                  !canContinue &&
+                    "cursor-not-allowed border-border bg-bg-elevated text-ink/40 opacity-100 hover:border-border hover:bg-bg-elevated hover:text-ink/40 disabled:opacity-100"
+                )}
+                aria-disabled={!canContinue}
+              >
                 Continue
               </Button>
             ) : (
