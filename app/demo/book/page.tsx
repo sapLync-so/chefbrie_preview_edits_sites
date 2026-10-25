@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
 import { DemoBanner } from "@/components/DemoBanner";
+import { MealPrepCustomizeMenuCallout } from "@/components/MealPrepCustomizeMenuDialog";
 import { MealPrepIntakeForm } from "@/components/MealPrepIntakeForm";
 import { MobileBookBar } from "@/components/MobileBookBar";
 import { PaymentZelle } from "@/components/PaymentZelle";
@@ -19,15 +20,14 @@ import { HoneypotField } from "@/components/HoneypotField";
 import { TurnstileField } from "@/components/TurnstileField";
 import { useFormStartedAt } from "@/lib/form-client-meta";
 import {
+  MEAL_PREP_MIN_ORDER,
   mealPrepEstimatedTotal,
   mealPrepSalesTax,
-  meetsServiceMinimum,
+  meetsOrderMinimum,
   minimumOrderMessage,
   serviceSubtotal,
 } from "@/lib/meal-prep-order";
 import { cn } from "@/lib/utils";
-
-const MEAL_PREP_MIN_ORDER = 75;
 
 const fieldClass =
   "w-full rounded-md border border-border bg-bg px-4 py-3 font-sans text-sm text-ink focus-visible:ring-2 focus-visible:ring-gold-bright";
@@ -180,21 +180,17 @@ function DemoBookContent() {
   };
 
   const mealPrepStep2Valid = useMemo(() => {
-    const hasService =
+    const hasSelections =
       (breakfastServiceEnabled && selectedBreakfastWeekIds.length > 0) ||
       (dinnerServiceEnabled && selectedDinnerWeekIds.length > 0);
-    if (!hasService) return false;
-    return (
-      meetsServiceMinimum(breakfastServiceEnabled, breakfastSubtotal) &&
-      meetsServiceMinimum(dinnerServiceEnabled, dinnerSubtotal)
-    );
+    if (!hasSelections) return false;
+    return meetsOrderMinimum(subtotal);
   }, [
     breakfastServiceEnabled,
     dinnerServiceEnabled,
     selectedBreakfastWeekIds.length,
     selectedDinnerWeekIds.length,
-    breakfastSubtotal,
-    dinnerSubtotal,
+    subtotal,
   ]);
 
   const stepLabels = isMealPrep
@@ -350,10 +346,11 @@ function DemoBookContent() {
           {step === 2 && isMealPrep && (
             <fieldset className="min-w-0 space-y-8">
               <legend className="font-sans text-xs uppercase tracking-[0.25em] text-gold">Build your order</legend>
+              <MealPrepCustomizeMenuCallout intake={intake} />
               <p className="font-sans text-sm leading-relaxed text-ink/65">
-                Choose breakfast and/or dinner — each service has a ${MEAL_PREP_MIN_ORDER} minimum. Pick as many weeks as
-                you like per service. Cancellations must be made by Friday morning; otherwise payments are non-refundable
-                (see intake form).
+                Choose breakfast and/or dinner — orders have a ${MEAL_PREP_MIN_ORDER} minimum (combined pre-tax subtotal).
+                Pick as many weeks as you like. Cancellations must be made by Friday morning; otherwise payments are
+                non-refundable (see intake form).
               </p>
 
               <section className="w-full min-w-0 space-y-4 rounded-lg border border-border bg-bg p-4 md:p-5">
@@ -385,11 +382,6 @@ function DemoBookContent() {
                     <p className="font-sans text-xs tabular-nums text-ink/55">
                       Breakfast subtotal (estimated): {formatMealPrepPrice(breakfastSubtotal)}
                     </p>
-                    {!meetsServiceMinimum(true, breakfastSubtotal) ? (
-                      <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 font-sans text-sm text-amber-100">
-                        {minimumOrderMessage("Breakfast", breakfastSubtotal)}
-                      </p>
-                    ) : null}
                   </>
                 ) : (
                   <p className="font-sans text-sm text-ink/45">Breakfast is not included in this order.</p>
@@ -425,11 +417,6 @@ function DemoBookContent() {
                     <p className="font-sans text-xs tabular-nums text-ink/55">
                       Dinner subtotal (estimated): {formatMealPrepPrice(dinnerSubtotal)}
                     </p>
-                    {!meetsServiceMinimum(true, dinnerSubtotal) ? (
-                      <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 font-sans text-sm text-amber-100">
-                        {minimumOrderMessage("Dinner", dinnerSubtotal)}
-                      </p>
-                    ) : null}
                   </>
                 ) : (
                   <p className="font-sans text-sm text-ink/45">Dinner is not included in this order.</p>
@@ -438,6 +425,21 @@ function DemoBookContent() {
 
               {!breakfastServiceEnabled && !dinnerServiceEnabled ? (
                 <p className="font-sans text-sm text-ink/55">Select at least one service to continue.</p>
+              ) : null}
+
+              {(breakfastServiceEnabled || dinnerServiceEnabled) && lineItems.length > 0 && !meetsOrderMinimum(subtotal) ? (
+                <p
+                  className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 font-sans text-sm text-amber-100"
+                  role="status"
+                >
+                  {minimumOrderMessage(subtotal)}
+                </p>
+              ) : null}
+
+              {(breakfastServiceEnabled || dinnerServiceEnabled) && lineItems.length > 0 ? (
+                <p className="font-sans text-xs tabular-nums text-ink/55">
+                  Order subtotal (estimated): {formatMealPrepPrice(subtotal)}
+                </p>
               ) : null}
             </fieldset>
           )}

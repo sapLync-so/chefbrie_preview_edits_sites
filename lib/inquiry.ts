@@ -32,6 +32,14 @@ export type ContactSubmitPayload =
       paymentNote?: string;
     }
   | {
+      formType: "meal-prep-custom-menu";
+      company_website?: string;
+      name: string;
+      email: string;
+      phone: string;
+      request: string;
+    }
+  | {
       formType: "micro-catering-quote";
       company_website?: string;
       name: string;
@@ -102,6 +110,22 @@ export function buildMailtoFromContact(payload: ContactSubmitPayload): InquiryPa
         weeks,
         "",
         ...totals,
+      ].join("\n"),
+      formType: payload.formType,
+    };
+  }
+  if (payload.formType === "meal-prep-custom-menu") {
+    return {
+      subject: `Meal prep — custom menu request — ${payload.name}`,
+      body: [
+        "Custom menu request (meal prep booking flow)",
+        "",
+        `Name: ${payload.name}`,
+        `Email: ${payload.email}`,
+        `Phone: ${payload.phone}`,
+        "",
+        "What they would like:",
+        payload.request,
       ].join("\n"),
       formType: payload.formType,
     };

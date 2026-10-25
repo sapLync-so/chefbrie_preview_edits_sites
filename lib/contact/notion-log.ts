@@ -4,6 +4,7 @@ import type { ContactRuntimeConfig } from "@/lib/contact/env";
 
 export const NOTION_FORM_TYPES = {
   "meal-prep-booking": "Meal Prep Intake",
+  "meal-prep-custom-menu": "Custom Menu Request",
   contact: "Contact",
   "micro-catering-quote": "Quote Request",
   "supper-club-artist": "Artist Application",
@@ -25,6 +26,7 @@ function submissionTitle(submission: ContactSubmission): string {
   switch (submission.formType) {
     case "meal-prep-booking":
       return submission.clientName;
+    case "meal-prep-custom-menu":
     case "micro-catering-quote":
     case "contact":
       return submission.name;
@@ -49,6 +51,8 @@ function pageBodyParagraphs(submission: ContactSubmission): string[] {
         }),
         submission.paymentNote ?? "",
       ].filter(Boolean);
+    case "meal-prep-custom-menu":
+      return [`Custom menu request: ${submission.request}`, `Phone: ${submission.phone}`, `Email: ${submission.email}`];
     case "micro-catering-quote":
       return [submission.details, submission.phone ? `Phone: ${submission.phone}` : ""].filter(Boolean);
     case "supper-club-artist":
@@ -103,6 +107,19 @@ function notionProperties(
       ),
       Subtotal: { number: submission.subtotal },
       "Payment Note": rt(submission.paymentNote),
+    };
+  }
+
+  if (submission.formType === "meal-prep-custom-menu") {
+    return {
+      ...base,
+      "Email or Phone": rt([submission.email, submission.phone].filter(Boolean).join(" · ")),
+      Allergies: rt(""),
+      "Acknowledgment Name": rt(""),
+      "Signature Date": { date: null },
+      "Weeks Picked": rt(submission.request),
+      Subtotal: { number: null },
+      "Payment Note": rt("Custom menu request"),
     };
   }
 

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MEAL_PREP_MIN_ORDER } from "@/lib/meal-prep-order";
 
 const honeypotField = z
   .string()
@@ -34,12 +35,23 @@ export const mealPrepBookingSchema = z.object({
     .max(500_000)
     .refine((v) => v.startsWith("data:image/png;base64,"), "Invalid signature image"),
   selectedWeeks: z.array(weekLineSchema).min(1).max(52),
-  subtotal: z.number().nonnegative(),
+  subtotal: z.number().min(MEAL_PREP_MIN_ORDER, {
+    message: `Orders require a $${MEAL_PREP_MIN_ORDER} minimum (pre-tax subtotal).`,
+  }),
   salesTax: z.number().nonnegative().optional(),
   estimatedTotal: z.number().nonnegative().optional(),
   breakfastServiceSelected: z.boolean().optional(),
   dinnerServiceSelected: z.boolean().optional(),
   paymentNote: z.string().max(2000).optional(),
+});
+
+export const mealPrepCustomMenuSchema = z.object({
+  formType: z.literal("meal-prep-custom-menu"),
+  company_website: honeypotField,
+  name: z.string().min(1).max(200),
+  email: z.string().email().max(320),
+  phone: z.string().min(1).max(40),
+  request: z.string().min(1).max(8000),
 });
 
 export const microCateringQuoteSchema = z.object({
@@ -83,6 +95,7 @@ export const generalBookingSchema = z.object({
 
 export const contactSubmissionSchema = z.discriminatedUnion("formType", [
   mealPrepBookingSchema,
+  mealPrepCustomMenuSchema,
   microCateringQuoteSchema,
   supperClubArtistSchema,
   contactFormSchema,

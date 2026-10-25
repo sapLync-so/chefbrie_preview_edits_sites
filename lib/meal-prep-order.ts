@@ -1,4 +1,4 @@
-export const MEAL_PREP_MIN_ORDER_PER_SERVICE = 75;
+export const MEAL_PREP_MIN_ORDER = 75;
 export const NJ_SALES_TAX_RATE = 0.066;
 
 export function mealPrepSalesTax(subtotal: number): number {
@@ -21,14 +21,13 @@ export function serviceSubtotal(
     .reduce((sum, w) => sum + (service === "breakfast" ? w.breakfast.price : w.dinner.price), 0);
 }
 
-export function meetsServiceMinimum(enabled: boolean, subtotal: number): boolean {
-  if (!enabled) return true;
-  return subtotal >= MEAL_PREP_MIN_ORDER_PER_SERVICE;
+export function meetsOrderMinimum(subtotal: number): boolean {
+  return subtotal >= MEAL_PREP_MIN_ORDER;
 }
 
-export function minimumOrderMessage(serviceLabel: string, subtotal: number): string {
-  const remaining = MEAL_PREP_MIN_ORDER_PER_SERVICE - subtotal;
-  return `${serviceLabel} orders require a $${MEAL_PREP_MIN_ORDER_PER_SERVICE} minimum. Add ${formatUsd(remaining)} more in ${serviceLabel.toLowerCase()} selections, or tap “Deselect ${serviceLabel}” to continue without it.`;
+export function minimumOrderMessage(subtotal: number): string {
+  const remaining = Math.max(0, MEAL_PREP_MIN_ORDER - subtotal);
+  return `Orders require a $${MEAL_PREP_MIN_ORDER} minimum. Add ${formatUsd(remaining)} more.`;
 }
 
 function formatUsd(amount: number): string {

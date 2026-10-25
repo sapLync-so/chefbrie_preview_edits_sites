@@ -7,6 +7,8 @@ function subjectFor(submission: ContactSubmission): string {
   switch (submission.formType) {
     case "meal-prep-booking":
       return `Meal prep booking — ${submission.clientName}`;
+    case "meal-prep-custom-menu":
+      return `Meal prep — custom menu request — ${submission.name}`;
     case "micro-catering-quote":
       return `Micro-Catering quote request — ${submission.name}`;
     case "supper-club-artist":
@@ -30,6 +32,7 @@ function submitterReplyTo(submission: ContactSubmission): string | undefined {
   switch (submission.formType) {
     case "contact":
     case "micro-catering-quote":
+    case "meal-prep-custom-menu":
       return submission.email;
     case "meal-prep-booking":
       return extractReplyTo(submission.emailPhone);
@@ -81,6 +84,19 @@ function plainTextBody(submission: ContactSubmission): string {
       ...(submission.paymentNote ? ["", submission.paymentNote] : []),
       "",
       "Signature PNG attached.",
+    ]);
+  }
+
+  if (submission.formType === "meal-prep-custom-menu") {
+    return joinPlainBody(header, [
+      "Custom menu request (meal prep booking flow)",
+      "",
+      `Name: ${submission.name}`,
+      `Email: ${submission.email}`,
+      `Phone: ${submission.phone}`,
+      "",
+      "What they would like:",
+      submission.request,
     ]);
   }
 
@@ -154,6 +170,13 @@ function htmlBody(submission: ContactSubmission): string {
     return wrap(
       subjectFor(submission),
       `<p><strong>Client:</strong> ${esc(submission.clientName)}<br/><strong>Contact:</strong> ${esc(submission.emailPhone)}</p><p><strong>Dietary:</strong><br/>${esc(submission.dietaryRestrictions)}</p><p><strong>Acknowledgment:</strong> ${esc(submission.acknowledgmentName)} · ${esc(submission.signatureDate)}</p><ul>${weeks}</ul>${totals}<p>Signature PNG attached.</p>`
+    );
+  }
+
+  if (submission.formType === "meal-prep-custom-menu") {
+    return wrap(
+      subjectFor(submission),
+      `<p><strong>Custom menu request</strong> (meal prep booking flow)</p><p><strong>${esc(submission.name)}</strong><br/>${esc(submission.email)}<br/>${esc(submission.phone)}</p><p><strong>What they would like:</strong><br/>${esc(submission.request)}</p>`
     );
   }
 

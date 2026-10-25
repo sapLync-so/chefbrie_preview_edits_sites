@@ -32,6 +32,21 @@ function submissionRow(submission: ContactSubmission, signaturePath: string | nu
     };
   }
 
+  if (submission.formType === "meal-prep-custom-menu") {
+    return {
+      ...base,
+      name: submission.name,
+      email_phone: [submission.email, submission.phone].filter(Boolean).join(" · "),
+      allergies_dietary: null,
+      acknowledgment_name: null,
+      signature_date: null,
+      weeks_picked: null,
+      subtotal: null,
+      payment_note: "Custom menu request",
+      message: submission.request,
+    };
+  }
+
   if (submission.formType === "micro-catering-quote") {
     return {
       ...base,
