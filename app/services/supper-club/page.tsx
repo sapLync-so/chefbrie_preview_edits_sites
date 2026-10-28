@@ -3,10 +3,9 @@ import { ImageCarousel } from "@/components/ImageCarousel";
 import { Reveal } from "@/components/motion/Reveal";
 import { PageShell } from "@/components/PageShell";
 import { ServiceCta } from "@/components/ServiceCta";
-import { Button } from "@/components/ui/button";
+import { InquiryDialog } from "@/components/InquiryDialog";
 import { supperClubGallerySlides } from "@/data/gallery";
 import type { Metadata } from "next";
-import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Brie's Supper Club | Chef Brie",
@@ -42,9 +41,27 @@ export default function SupperClubPage() {
             <p className="mt-4 max-w-xl font-sans text-lg font-light text-ink/80">
               Multiple courses. A breathtaking venue. People, plates, and atmosphere woven into one unforgettable evening.
             </p>
-            <Button asChild className="mt-8">
-              <Link href="/demo/book">Join the waitlist (demo)</Link>
-            </Button>
+            <InquiryDialog
+              triggerLabel="Artist application"
+              triggerVariant="default"
+              triggerClassName="mt-8"
+              title="Artist application"
+              description="Apply to showcase your work at an upcoming Brie's Supper Club evening."
+              formType="supper-club-artist"
+              fields={[
+                { id: "artistName", label: "Artist name", required: true },
+                { id: "medium", label: "Medium", required: true, placeholder: "Painting, photography, music…" },
+                { id: "location", label: "Location", required: true },
+                { id: "contact", label: "Contact info (email / phone)", required: true },
+                {
+                  id: "whyJoin",
+                  label: "Why do you want to join?",
+                  type: "textarea",
+                  required: true,
+                  rows: 4,
+                },
+              ]}
+            />
           </Reveal>
         </div>
       </section>
@@ -98,7 +115,7 @@ export default function SupperClubPage() {
               place through the inquiry form and note &ldquo;Supper Club&rdquo; so Brie can share the next experience with you.
             </p>
           </div>
-          <ServiceCta service="tasting-popup" primaryLabel="Reserve / Join Waitlist" />
+          <ServiceCta service="tasting-popup" primaryLabel="Artist application" inquiryMode="artist" />
         </Reveal>
       </article>
     </PageShell>

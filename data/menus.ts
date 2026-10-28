@@ -1,5 +1,5 @@
 export type MealPrepWeek = {
-  dateLabel: string;
+  id: string;
   breakfast: { name: string; price: number };
   dinner: { name: string; price: number };
 };
@@ -20,19 +20,21 @@ export type MenuSection = {
 
 export const mealPrepMenu = {
   title: "Weekly Meal Prep Menu",
+  serviceNote:
+    "Recurring weekly Sunday meal prep — menus rotate seasonally. Many clients order several weeks (or a month) at a time.",
   weeks: [
     {
-      dateLabel: "Sunday, October 18",
+      id: "rotation-1",
       breakfast: { name: "Pancakes, turkey sausage & fruit", price: 15 },
       dinner: { name: "BBQ chicken, corn maque choux & tossed salad", price: 25 },
     },
     {
-      dateLabel: "Sunday, October 25",
+      id: "rotation-2",
       breakfast: { name: "Cinnamon roll overnight oats", price: 8 },
       dinner: { name: "Salisbury steak, mashed potatoes & string beans", price: 25 },
     },
     {
-      dateLabel: "Sunday, November 1",
+      id: "rotation-3",
       breakfast: {
         name: "Breakfast burrito. Eggs, turkey sausage & potatoes with sour cream, guacamole & salsa",
         price: 15,
@@ -43,17 +45,17 @@ export const mealPrepMenu = {
       },
     },
     {
-      dateLabel: "Sunday, November 8",
+      id: "rotation-4",
       breakfast: { name: "Greek yogurt, granola & bananas Foster", price: 8 },
       dinner: { name: "Crispy honey chicken, mac and cheese & collard greens", price: 28 },
     },
     {
-      dateLabel: "Sunday, November 9",
+      id: "rotation-5",
       breakfast: { name: "Marinated fruit", price: 5 },
       dinner: { name: "Butter chicken, basmati rice & vegetable samosas", price: 28 },
     },
     {
-      dateLabel: "Sunday, November 16",
+      id: "rotation-6",
       breakfast: { name: "Vegetable frittata & toast", price: 8 },
       dinner: {
         name: "Jerk chicken, rice, caramelized plantain, avocado, pico & charred scallion sauce",
@@ -171,3 +173,8 @@ export const cateringMenu = {
   customItemsNote:
     "Custom items and additional selections are available upon request and can be priced accordingly.",
 };
+
+/** Display label for a meal prep rotation (no calendar dates). */
+export function mealPrepRotationLabel(index: number): string {
+  return `Weekly menu ${index + 1}`;
+}

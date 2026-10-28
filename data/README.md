@@ -6,7 +6,7 @@ Weekly meal prep and catering menus live in **`menus.ts`**. Update that file whe
 
 Edit the `mealPrepMenu.weeks` array. Each week needs:
 
-- `dateLabel` — e.g. `"Sunday, November 16"`
+- `id` — stable slug, e.g. `"rotation-1"` (menus are weekly rotations, not calendar dates)
 - `breakfast.name` and `breakfast.price` (number, dollars per meal)
 - `dinner.name` and `dinner.price`
 

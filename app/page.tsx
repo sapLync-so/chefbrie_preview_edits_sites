@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { HeroMedia } from "@/components/HeroMedia";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { DemoBanner } from "@/components/DemoBanner";
 import { HomeGallery } from "@/components/HomeGallery";
@@ -65,18 +66,7 @@ export default function ChefBrieHome() {
       {/* Hero */}
       <section className="relative flex min-h-[100svh] items-end pt-16">
         <div className="absolute inset-0 overflow-hidden">
-          <video
-            className="h-full w-full object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-            poster="/videos/supper-club-poster.jpg"
-            preload="metadata"
-            aria-label="Supper club atmosphere reel"
-          >
-            <source src="/videos/supper-club-reel.mp4" type="video/mp4" />
-          </video>
+          <HeroMedia />
           <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/55 to-bg/30" aria-hidden />
         </div>
         <div className="relative z-10 mx-auto w-full max-w-6xl px-5 pb-20 md:pb-28">
@@ -199,17 +189,25 @@ export default function ChefBrieHome() {
                     <p className="mb-6 flex-grow font-sans text-sm font-light leading-relaxed text-ink/60">
                       {service.description}
                     </p>
-                    {service.details.length > 0 && (
-                      <ul className="mb-6 space-y-2">
-                        {service.details.map((d) => (
+                    <ul className="mb-6 min-h-[5.5rem] space-y-2">
+                      {service.details.length > 0 ? (
+                        service.details.map((d) => (
                           <li key={d} className="flex items-start gap-2 font-sans text-xs text-ink/50">
                             <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-gold" aria-hidden />
                             {d}
                           </li>
-                        ))}
-                      </ul>
-                    )}
-                    <Button asChild variant="outline" className="mt-auto w-full">
+                        ))
+                      ) : (
+                        <li className="font-sans text-xs text-ink/35" aria-hidden>
+                          &nbsp;
+                        </li>
+                      )}
+                    </ul>
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="mt-auto h-auto min-h-11 w-full whitespace-normal py-3 text-center leading-snug"
+                    >
                       <Link href={service.href}>{service.ctaLabel}</Link>
                     </Button>
                   </div>
@@ -224,11 +222,11 @@ export default function ChefBrieHome() {
       <section className="border-y border-border bg-bg-elevated px-5 py-section">
         <div className="mx-auto grid max-w-6xl gap-12 md:grid-cols-2 md:items-center">
           <Reveal>
-            <p className="mb-3 font-sans text-xs uppercase tracking-[0.35em] text-gold">This week</p>
+            <p className="mb-3 font-sans text-xs uppercase tracking-[0.35em] text-gold">Weekly service</p>
             <h2 className="text-3xl font-light md:text-4xl">
               Featured <span className="italic text-gold">meal prep</span>
             </h2>
-            <p className="mt-4 font-sans text-sm text-ink/60">{featuredWeek.dateLabel}</p>
+            <p className="mt-4 font-sans text-sm text-ink/60">{mealPrepMenu.serviceNote}</p>
             <div className="mt-8 space-y-6 font-sans text-sm">
               <div className="rounded-md border border-border p-5">
                 <p className="text-xs uppercase tracking-[0.2em] text-gold">Breakfast</p>
@@ -307,7 +305,7 @@ export default function ChefBrieHome() {
         <div className="mx-auto grid max-w-6xl gap-16 md:grid-cols-2">
           <Reveal>
             <a
-              href="mailto:chefbrie01@gmail.com"
+              href="mailto:chefbrie.01@gmail.com"
               className="mb-4 inline-block font-sans text-xs uppercase tracking-[0.35em] text-gold transition-colors hover:text-gold-bright"
             >
               Get in Touch
@@ -324,8 +322,8 @@ export default function ChefBrieHome() {
             <div className="space-y-5 font-sans text-sm">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-ink/40">Email</p>
-                <a href="mailto:chefbrie01@gmail.com" className="text-ink/80 hover:text-gold">
-                  chefbrie01@gmail.com
+                <a href="mailto:chefbrie.01@gmail.com" className="text-ink/80 hover:text-gold">
+                  chefbrie.01@gmail.com
                 </a>
               </div>
               <div>

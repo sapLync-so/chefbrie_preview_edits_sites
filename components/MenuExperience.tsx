@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { Reveal } from "@/components/motion/Reveal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { cateringMenu, mealPrepMenu, type MenuItem } from "@/data/menus";
+import { cateringMenu, mealPrepMenu, mealPrepRotationLabel, type MenuItem } from "@/data/menus";
 import { extractDietaryTags, formatMealPrepPrice } from "@/lib/menu-utils";
 import { cn } from "@/lib/utils";
 
@@ -77,14 +77,15 @@ export function MenuExperience() {
               <p className="font-serif text-sm italic tracking-[0.2em] text-ink-cream/70">Chef</p>
               <p className="text-4xl font-semibold tracking-[0.08em]">BRIE</p>
               <p className="mt-2 font-sans text-xs uppercase tracking-[0.3em] text-ink-cream/60">Weekly Meal Prep Menu</p>
+              <p className="mx-auto mt-4 max-w-lg font-sans text-sm text-ink-cream/70">{mealPrepMenu.serviceNote}</p>
             </header>
 
             <div className="mt-12 grid gap-6 md:grid-cols-2">
               {mealPrepMenu.weeks.map((week, i) => (
-                <Reveal key={week.dateLabel} delay={i * 0.04}>
+                <Reveal key={week.id} delay={i * 0.04}>
                   <article className="rounded-lg border border-gold/40 bg-cream-muted p-6 shadow-sm">
                     <h2 className="border-b border-gold/30 pb-3 text-center font-sans text-sm uppercase tracking-[0.12em]">
-                      {week.dateLabel}
+                      {mealPrepRotationLabel(i)}
                     </h2>
                     <div className="mt-5 space-y-5 font-serif text-sm leading-relaxed">
                       <div>
