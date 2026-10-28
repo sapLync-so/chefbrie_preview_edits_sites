@@ -1,3 +1,5 @@
+import { formatMealPrepWeekParts, mealPrepWeekLineTotal } from "@/lib/meal-prep-lines";
+
 /** Default mailto recipient — must stay chefbrie.01@gmail.com (server uses CHEF_BRIE_NOTIFY_EMAIL). */
 const CHEF_BRIE_EMAIL = "chefbrie.01@gmail.com";
 
@@ -23,6 +25,8 @@ export type ContactSubmitPayload =
         dinner?: string;
         breakfastPrice?: number;
         dinnerPrice?: number;
+        breakfastQuantity?: number;
+        dinnerQuantity?: number;
       }[];
       subtotal: number;
       salesTax?: number;
@@ -84,11 +88,8 @@ export function buildMailtoFromContact(payload: ContactSubmitPayload): InquiryPa
   if (payload.formType === "meal-prep-booking") {
     const weeks = payload.selectedWeeks
       .map((w) => {
-        const parts: string[] = [];
-        if (w.breakfast != null) parts.push(`Breakfast: ${w.breakfast} ($${w.breakfastPrice?.toFixed(2)})`);
-        if (w.dinner != null) parts.push(`Dinner: ${w.dinner} ($${w.dinnerPrice?.toFixed(2)})`);
-        const lineTotal = (w.breakfastPrice ?? 0) + (w.dinnerPrice ?? 0);
-        return `${w.rotationLabel}: ${parts.join("; ")} ($${lineTotal.toFixed(2)})`;
+        const parts = formatMealPrepWeekParts(w);
+        return `${w.rotationLabel}: ${parts.join("; ")} ($${mealPrepWeekLineTotal(w).toFixed(2)})`;
       })
       .join("\n");
     const totals =

@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import type { ContactSubmission } from "@/lib/contact/schemas";
 import { parseSignatureBuffer } from "@/lib/contact/schemas";
+import { formatMealPrepWeekParts, mealPrepWeekLineTotal } from "@/lib/meal-prep-lines";
 import type { ContactRuntimeConfig } from "@/lib/contact/env";
 
 function subjectFor(submission: ContactSubmission): string {
@@ -67,11 +68,8 @@ function plainTextBody(submission: ContactSubmission): string {
       "",
       "Weeks:",
       ...submission.selectedWeeks.map((w) => {
-        const parts: string[] = [];
-        if (w.breakfast != null) parts.push(`Breakfast: ${w.breakfast} ($${w.breakfastPrice?.toFixed(2)})`);
-        if (w.dinner != null) parts.push(`Dinner: ${w.dinner} ($${w.dinnerPrice?.toFixed(2)})`);
-        const lineTotal = (w.breakfastPrice ?? 0) + (w.dinnerPrice ?? 0);
-        return `- ${w.rotationLabel}: ${parts.join("; ")} ($${lineTotal.toFixed(2)})`;
+        const parts = formatMealPrepWeekParts(w);
+        return `- ${w.rotationLabel}: ${parts.join("; ")} ($${mealPrepWeekLineTotal(w).toFixed(2)})`;
       }),
       "",
       `Estimated subtotal: $${submission.subtotal.toFixed(2)}`,
@@ -152,9 +150,7 @@ function htmlBody(submission: ContactSubmission): string {
   if (submission.formType === "meal-prep-booking") {
     const weeks = submission.selectedWeeks
       .map((w) => {
-        const lines: string[] = [];
-        if (w.breakfast != null) lines.push(`Breakfast: ${esc(w.breakfast)}`);
-        if (w.dinner != null) lines.push(`Dinner: ${esc(w.dinner)}`);
+        const lines = formatMealPrepWeekParts(w).map((line) => esc(line));
         return `<li><strong>${esc(w.rotationLabel)}</strong><br/>${lines.join("<br/>")}</li>`;
       })
       .join("");

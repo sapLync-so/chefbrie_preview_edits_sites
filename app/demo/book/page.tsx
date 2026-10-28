@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useMemo, useState } from "react";
+import { Minus, Plus } from "lucide-react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 import { DemoBanner } from "@/components/DemoBanner";
 import { MealPrepCustomizeMenuCallout } from "@/components/MealPrepCustomizeMenuDialog";
 import { MealPrepIntakeForm } from "@/components/MealPrepIntakeForm";
@@ -26,6 +27,7 @@ import {
   meetsOrderMinimum,
   minimumOrderMessage,
   serviceSubtotal,
+  totalMealQuantity,
 } from "@/lib/meal-prep-order";
 import { cn } from "@/lib/utils";
 
@@ -51,44 +53,78 @@ const emptyIntake = (): MealPrepIntakeData => ({
 
 type MealPrepWeek = (typeof mealPrepMenu.weeks)[number];
 
-function MealPrepWeekGrid({
+type WeekQuantities = Record<string, number>;
+
+function MealPrepWeekQuantityGrid({
   weeks,
-  selectedIds,
-  onToggleWeek,
+  quantities,
+  onChangeQuantity,
   getMeal,
 }: {
   weeks: MealPrepWeek[];
-  selectedIds: string[];
-  onToggleWeek: (id: string) => void;
+  quantities: WeekQuantities;
+  onChangeQuantity: (weekId: string, next: number) => void;
   getMeal: (week: MealPrepWeek) => { name: string; price: number };
 }) {
   return (
-    <div className="grid w-full min-w-0 grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+    <div className="grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
       {weeks.map((week, index) => {
-        const selected = selectedIds.includes(week.id);
         const meal = getMeal(week);
+        const qty = quantities[week.id] ?? 0;
+        const lineTotal = qty * meal.price;
         return (
-          <label
+          <div
             key={week.id}
             className={cn(
-              "box-border flex h-full min-w-0 cursor-pointer flex-col rounded-md border p-3 transition-colors",
-              selected ? "border-gold bg-gold/10" : "border-border hover:border-gold/45"
+              "box-border flex h-full min-w-0 flex-col rounded-md border p-3 transition-colors",
+              qty > 0 ? "border-gold bg-gold/10" : "border-border"
             )}
           >
-            <input
-              type="checkbox"
-              className="sr-only"
-              checked={selected}
-              onChange={() => onToggleWeek(week.id)}
-            />
             <span className="font-sans text-[10px] uppercase leading-tight tracking-[0.12em] text-gold">
               {mealPrepRotationLabel(index)}
             </span>
             <span className="mt-2 flex-1 font-sans text-xs leading-snug text-ink/85 md:text-sm">{meal.name}</span>
-            <span className="mt-auto pt-3 font-sans text-xs tabular-nums text-ink/55">
-              {formatMealPrepPrice(meal.price)}
+            <span className="mt-2 font-sans text-xs tabular-nums text-ink/55">
+              {formatMealPrepPrice(meal.price)} each
             </span>
-          </label>
+            <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/60 pt-3">
+              <span className="font-sans text-[10px] uppercase tracking-[0.12em] text-ink/45">Qty</span>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 shrink-0 border-border bg-bg-elevated"
+                  aria-label={`Decrease ${mealPrepRotationLabel(index)} quantity`}
+                  disabled={qty <= 0}
+                  onClick={() => onChangeQuantity(week.id, qty - 1)}
+                >
+                  <Minus className="h-4 w-4" aria-hidden />
+                </Button>
+                <span
+                  className="min-w-[2rem] text-center font-sans text-sm tabular-nums text-ink"
+                  aria-live="polite"
+                >
+                  {qty}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 shrink-0 border-border bg-bg-elevated"
+                  aria-label={`Increase ${mealPrepRotationLabel(index)} quantity`}
+                  onClick={() => onChangeQuantity(week.id, qty + 1)}
+                >
+                  <Plus className="h-4 w-4" aria-hidden />
+                </Button>
+              </div>
+            </div>
+            {qty > 0 ? (
+              <p className="mt-2 text-right font-sans text-xs tabular-nums text-gold">
+                {formatMealPrepPrice(lineTotal)}
+              </p>
+            ) : null}
+          </div>
         );
       })}
     </div>
@@ -139,8 +175,8 @@ function DemoBookContent() {
   const [date, setDate] = useState("");
   const [breakfastServiceEnabled, setBreakfastServiceEnabled] = useState(false);
   const [dinnerServiceEnabled, setDinnerServiceEnabled] = useState(false);
-  const [selectedBreakfastWeekIds, setSelectedBreakfastWeekIds] = useState<string[]>([]);
-  const [selectedDinnerWeekIds, setSelectedDinnerWeekIds] = useState<string[]>([]);
+  const [breakfastQuantities, setBreakfastQuantities] = useState<WeekQuantities>({});
+  const [dinnerQuantities, setDinnerQuantities] = useState<WeekQuantities>({});
   const [intake, setIntake] = useState<MealPrepIntakeData>(emptyIntake);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -155,81 +191,89 @@ function DemoBookContent() {
   const weeks = mealPrepMenu.weeks;
   const isMealPrep = service === "meal-prep";
 
+  const setMealQuantity = useCallback(
+    (service: "breakfast" | "dinner", weekId: string, next: number) => {
+      const clamped = Math.max(0, Math.min(99, next));
+      const setter = service === "breakfast" ? setBreakfastQuantities : setDinnerQuantities;
+      setter((prev) => {
+        if (clamped === 0) {
+          const { [weekId]: _removed, ...rest } = prev;
+          return rest;
+        }
+        return { ...prev, [weekId]: clamped };
+      });
+    },
+    []
+  );
+
   const breakfastSubtotal = useMemo(
-    () => serviceSubtotal(selectedBreakfastWeekIds, weeks, "breakfast"),
-    [selectedBreakfastWeekIds, weeks]
+    () => (breakfastServiceEnabled ? serviceSubtotal(breakfastQuantities, weeks, "breakfast") : 0),
+    [breakfastServiceEnabled, breakfastQuantities, weeks]
   );
   const dinnerSubtotal = useMemo(
-    () => serviceSubtotal(selectedDinnerWeekIds, weeks, "dinner"),
-    [selectedDinnerWeekIds, weeks]
+    () => (dinnerServiceEnabled ? serviceSubtotal(dinnerQuantities, weeks, "dinner") : 0),
+    [dinnerServiceEnabled, dinnerQuantities, weeks]
   );
 
   const lineItems = useMemo(() => {
-    const items: { key: string; label: string; detail: string; price: number }[] = [];
+    const items: { key: string; label: string; detail: string; quantity: number; price: number }[] = [];
     weeks.forEach((w, index) => {
       const rotation = mealPrepRotationLabel(index);
-      if (breakfastServiceEnabled && selectedBreakfastWeekIds.includes(w.id)) {
-        items.push({
-          key: `${w.id}-breakfast`,
-          label: `${rotation} — Breakfast`,
-          detail: w.breakfast.name,
-          price: w.breakfast.price,
-        });
+      if (breakfastServiceEnabled) {
+        const qty = breakfastQuantities[w.id] ?? 0;
+        if (qty > 0) {
+          items.push({
+            key: `${w.id}-breakfast`,
+            label: `${rotation}, Breakfast`,
+            detail: w.breakfast.name,
+            quantity: qty,
+            price: qty * w.breakfast.price,
+          });
+        }
       }
-      if (dinnerServiceEnabled && selectedDinnerWeekIds.includes(w.id)) {
-        items.push({
-          key: `${w.id}-dinner`,
-          label: `${rotation} — Dinner`,
-          detail: w.dinner.name,
-          price: w.dinner.price,
-        });
+      if (dinnerServiceEnabled) {
+        const qty = dinnerQuantities[w.id] ?? 0;
+        if (qty > 0) {
+          items.push({
+            key: `${w.id}-dinner`,
+            label: `${rotation}, Dinner`,
+            detail: w.dinner.name,
+            quantity: qty,
+            price: qty * w.dinner.price,
+          });
+        }
       }
     });
     return items;
-  }, [breakfastServiceEnabled, dinnerServiceEnabled, selectedBreakfastWeekIds, selectedDinnerWeekIds, weeks]);
+  }, [breakfastServiceEnabled, dinnerServiceEnabled, breakfastQuantities, dinnerQuantities, weeks]);
 
   const subtotal = lineItems.reduce((sum, item) => sum + item.price, 0);
   const salesTax = mealPrepSalesTax(subtotal);
   const estimatedTotal = mealPrepEstimatedTotal(subtotal);
 
-  const toggleBreakfastWeek = (id: string) => {
-    setSelectedBreakfastWeekIds((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]));
-  };
-
-  const toggleDinnerWeek = (id: string) => {
-    setSelectedDinnerWeekIds((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]));
-  };
-
   const toggleBreakfastService = () => {
     setBreakfastServiceEnabled((on) => {
-      if (on) setSelectedBreakfastWeekIds([]);
+      if (on) setBreakfastQuantities({});
       return !on;
     });
   };
 
   const toggleDinnerService = () => {
     setDinnerServiceEnabled((on) => {
-      if (on) setSelectedDinnerWeekIds([]);
+      if (on) setDinnerQuantities({});
       return !on;
     });
   };
 
   const mealPrepStep2Valid = useMemo(() => {
-    const hasSelections =
-      (breakfastServiceEnabled && selectedBreakfastWeekIds.length > 0) ||
-      (dinnerServiceEnabled && selectedDinnerWeekIds.length > 0);
-    if (!hasSelections) return false;
+    const breakfastMeals = breakfastServiceEnabled ? totalMealQuantity(breakfastQuantities) : 0;
+    const dinnerMeals = dinnerServiceEnabled ? totalMealQuantity(dinnerQuantities) : 0;
+    if (breakfastMeals + dinnerMeals === 0) return false;
     return meetsOrderMinimum(subtotal);
-  }, [
-    breakfastServiceEnabled,
-    dinnerServiceEnabled,
-    selectedBreakfastWeekIds.length,
-    selectedDinnerWeekIds.length,
-    subtotal,
-  ]);
+  }, [breakfastServiceEnabled, dinnerServiceEnabled, breakfastQuantities, dinnerQuantities, subtotal]);
 
   const stepLabels = isMealPrep
-    ? (["Intake", "Your weeks", "Summary"] as const)
+    ? (["Intake", "The Menu", "Summary"] as const)
     : (["Service & date", "Details", "Summary"] as const);
 
   const canContinue =
@@ -261,15 +305,21 @@ function DemoBookContent() {
           signatureDataUrl: intake.signatureDataUrl,
           selectedWeeks: weeks
             .map((w, index) => {
-              const includeBreakfast = breakfastServiceEnabled && selectedBreakfastWeekIds.includes(w.id);
-              const includeDinner = dinnerServiceEnabled && selectedDinnerWeekIds.includes(w.id);
-              if (!includeBreakfast && !includeDinner) return null;
+              const bQty = breakfastServiceEnabled ? (breakfastQuantities[w.id] ?? 0) : 0;
+              const dQty = dinnerServiceEnabled ? (dinnerQuantities[w.id] ?? 0) : 0;
+              if (bQty <= 0 && dQty <= 0) return null;
               return {
                 rotationLabel: mealPrepRotationLabel(index),
-                ...(includeBreakfast
-                  ? { breakfast: w.breakfast.name, breakfastPrice: w.breakfast.price }
+                ...(bQty > 0
+                  ? {
+                      breakfast: w.breakfast.name,
+                      breakfastPrice: w.breakfast.price,
+                      breakfastQuantity: bQty,
+                    }
                   : {}),
-                ...(includeDinner ? { dinner: w.dinner.name, dinnerPrice: w.dinner.price } : {}),
+                ...(dQty > 0
+                  ? { dinner: w.dinner.name, dinnerPrice: w.dinner.price, dinnerQuantity: dQty }
+                  : {}),
               };
             })
             .filter((row): row is NonNullable<typeof row> => row != null),
@@ -309,11 +359,11 @@ function DemoBookContent() {
         Demo — preview booking flow
       </Badge>
       <h1 className="text-4xl font-light leading-tight md:text-5xl">
-        Request an <span className="italic text-gold">experience</span>
+        Request an <span className="italic text-gold">Experience</span>
       </h1>
       <p className="mt-4 font-sans text-sm leading-relaxed text-ink/65">
         {isMealPrep
-          ? "Start with the meal prep intake form, then choose how many weeks you’d like. On the live site, your request is emailed to Chef Brie via the contact handler or your mail app."
+          ? "Let's get started! Complete our meal prep intake form to share your preferences, select your desired meal plan duration, and review your selections. Once submitted, Chef Brie will be in touch to confirm the details and next steps."
           : "This multi-step flow shows how booking could feel for catering and supper club inquiries."}
       </p>
 
@@ -398,10 +448,10 @@ function DemoBookContent() {
                 />
                 {breakfastServiceEnabled ? (
                   <>
-                    <MealPrepWeekGrid
+                    <MealPrepWeekQuantityGrid
                       weeks={weeks}
-                      selectedIds={selectedBreakfastWeekIds}
-                      onToggleWeek={toggleBreakfastWeek}
+                      quantities={breakfastQuantities}
+                      onChangeQuantity={(weekId, next) => setMealQuantity("breakfast", weekId, next)}
                       getMeal={(week) => week.breakfast}
                     />
                     <p className="font-sans text-xs tabular-nums text-ink/55">
@@ -423,10 +473,10 @@ function DemoBookContent() {
                 />
                 {dinnerServiceEnabled ? (
                   <>
-                    <MealPrepWeekGrid
+                    <MealPrepWeekQuantityGrid
                       weeks={weeks}
-                      selectedIds={selectedDinnerWeekIds}
-                      onToggleWeek={toggleDinnerWeek}
+                      quantities={dinnerQuantities}
+                      onChangeQuantity={(weekId, next) => setMealQuantity("dinner", weekId, next)}
                       getMeal={(week) => week.dinner}
                     />
                     <p className="font-sans text-xs tabular-nums text-ink/55">
@@ -526,7 +576,7 @@ function DemoBookContent() {
                         <li key={item.key} className="flex justify-between gap-4 border-b border-border/60 pb-2">
                           <span>
                             <span className="block text-ink/50">{item.label}</span>
-                            {item.detail}
+                            {item.quantity} × {item.detail}
                           </span>
                           <span className="shrink-0 tabular-nums">{formatMealPrepPrice(item.price)}</span>
                         </li>

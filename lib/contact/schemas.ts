@@ -14,10 +14,13 @@ const weekLineSchema = z
     dinner: z.string().min(1).optional(),
     breakfastPrice: z.number().nonnegative().optional(),
     dinnerPrice: z.number().nonnegative().optional(),
+    breakfastQuantity: z.number().int().min(1).max(99).optional(),
+    dinnerQuantity: z.number().int().min(1).max(99).optional(),
   })
   .refine(
     (w) =>
-      (w.breakfast != null && w.breakfastPrice != null) || (w.dinner != null && w.dinnerPrice != null),
+      (w.breakfast != null && w.breakfastPrice != null && (w.breakfastQuantity ?? 1) >= 1) ||
+      (w.dinner != null && w.dinnerPrice != null && (w.dinnerQuantity ?? 1) >= 1),
     { message: "Each week must include at least one meal" }
   );
 

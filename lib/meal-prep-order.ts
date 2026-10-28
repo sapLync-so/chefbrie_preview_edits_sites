@@ -12,13 +12,20 @@ export function mealPrepEstimatedTotal(subtotal: number): number {
 export type MealPrepServiceKey = "breakfast" | "dinner";
 
 export function serviceSubtotal(
-  weekIds: string[],
+  quantities: Record<string, number>,
   weeks: { id: string; breakfast: { price: number }; dinner: { price: number } }[],
   service: MealPrepServiceKey
 ): number {
-  return weeks
-    .filter((w) => weekIds.includes(w.id))
-    .reduce((sum, w) => sum + (service === "breakfast" ? w.breakfast.price : w.dinner.price), 0);
+  return weeks.reduce((sum, w) => {
+    const qty = quantities[w.id] ?? 0;
+    if (qty <= 0) return sum;
+    const price = service === "breakfast" ? w.breakfast.price : w.dinner.price;
+    return sum + qty * price;
+  }, 0);
+}
+
+export function totalMealQuantity(quantities: Record<string, number>): number {
+  return Object.values(quantities).reduce((sum, q) => sum + (q > 0 ? q : 0), 0);
 }
 
 export function meetsOrderMinimum(subtotal: number): boolean {

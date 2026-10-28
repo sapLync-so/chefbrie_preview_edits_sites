@@ -1,5 +1,6 @@
 import { Client } from "@notionhq/client";
 import type { ContactSubmission } from "@/lib/contact/schemas";
+import { formatMealPrepWeekParts, mealPrepWeekLineTotal } from "@/lib/meal-prep-lines";
 import type { ContactRuntimeConfig } from "@/lib/contact/env";
 
 export const NOTION_FORM_TYPES = {
@@ -43,11 +44,8 @@ function pageBodyParagraphs(submission: ContactSubmission): string[] {
       return [
         submission.dietaryRestrictions,
         ...submission.selectedWeeks.map((w) => {
-          const parts: string[] = [];
-          if (w.breakfast != null) parts.push(`Breakfast — ${w.breakfast} ($${w.breakfastPrice?.toFixed(2)})`);
-          if (w.dinner != null) parts.push(`Dinner — ${w.dinner} ($${w.dinnerPrice?.toFixed(2)})`);
-          const lineTotal = (w.breakfastPrice ?? 0) + (w.dinnerPrice ?? 0);
-          return `${w.rotationLabel}: ${parts.join("; ")} ($${lineTotal.toFixed(2)})`;
+          const parts = formatMealPrepWeekParts(w);
+          return `${w.rotationLabel}: ${parts.join("; ")} ($${mealPrepWeekLineTotal(w).toFixed(2)})`;
         }),
         submission.paymentNote ?? "",
       ].filter(Boolean);
