@@ -5,10 +5,13 @@ import { PageShell } from "@/components/PageShell";
 import { ServiceCta } from "@/components/ServiceCta";
 import { Button } from "@/components/ui/button";
 import { supperClubGallerySlides } from "@/data/gallery";
+import { previewRobotsMetadata, productionCanonical } from "@/lib/preview-seo";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
+  ...previewRobotsMetadata,
+  ...productionCanonical("/services/supper-club"),
   title: "Brie's Supper Club | Chef Brie",
   description:
     "An immersive multi-course supper club experience — curated venues, storytelling, and unforgettable evenings in NJ & PA.",

@@ -1,8 +1,11 @@
 import { PageShell } from "@/components/PageShell";
 import { ServiceCta } from "@/components/ServiceCta";
+import { previewRobotsMetadata, productionCanonical } from "@/lib/preview-seo";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
+  ...previewRobotsMetadata,
+  ...productionCanonical("/services/meal-prep"),
   title: "Meal Prep | Chef Brie",
   description:
     "Chef-crafted weekly meal prep with rotating menus. Pickup in Langhorne, PA and Princeton, NJ.",

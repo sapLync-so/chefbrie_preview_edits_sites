@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, DM_Sans } from "next/font/google";
+import { previewRobotsMetadata, PRODUCTION_SITE_URL, productionCanonical } from "@/lib/preview-seo";
 import "./globals.css";
 
 const display = Cormorant_Garamond({
@@ -18,6 +19,9 @@ const body = DM_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(PRODUCTION_SITE_URL),
+  ...previewRobotsMetadata,
+  ...productionCanonical("/"),
   title: "Chef Brie | Private Chef - New Jersey & Pennsylvania",
   description:
     "Private chef. Culinary storyteller. Crafting unforgettable dining experiences — one plate at a time. Micro-catering, meal prep, and 6-course tasting pop-ups.",
