@@ -1,8 +1,11 @@
 import { PageShell } from "@/components/PageShell";
 import { ServiceCta } from "@/components/ServiceCta";
+import { previewRobotsMetadata, productionCanonical } from "@/lib/preview-seo";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
+  ...previewRobotsMetadata,
+  ...productionCanonical("/services/micro-catering"),
   title: "Micro Catering | Chef Brie",
   description:
     "Elevated micro-catering for intimate events, corporate gatherings, retreats, and universities in NJ & PA.",
